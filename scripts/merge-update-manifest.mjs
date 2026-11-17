@@ -1,7 +1,7 @@
 // Adds one platform's signed updater artifact to an existing Tauri updater
 // manifest (latest.json). The macOS release job writes the manifest; the
-// Windows release job adds windows-x86_64 and windows-aarch64 to it, so a
-// Windows build that fails never holds back the macOS release (docs/releasing.md).
+// The platform release job adds Windows and Linux entries to it, so a desktop
+// build that fails never holds back the macOS release (docs/releasing.md).
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';

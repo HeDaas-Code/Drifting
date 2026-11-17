@@ -6,10 +6,10 @@ A cross-platform, AI-native novel-writing app.
 studio, and an AI Agent for the whole book, it's built to help you write your
 first bestseller.**
 
-[Download for Mac and Windows](https://github.com/chihumyum/Drifting/releases/latest) ·
+[Download for Mac, Windows and Linux](https://github.com/chihumyum/Drifting/releases/latest) ·
 [Website](https://drifting.cc/) · [Documentation](docs/README.md)
 
-macOS 13+ · Windows 10/11 · Early development
+macOS 13+ · Windows 10/11 · Linux x86_64 · Early development
 
 English | [简体中文](README.zh-CN.md)
 
@@ -21,7 +21,7 @@ Interface: 简体中文 · 繁體中文 · English · 日本語 · 한국어 · 
 
 ![The element overview: characters, places and lore as a graph of their relations](docs/screenshots/elements.webp)
 
-Drifting is an open-source, local-first novel writing app for Mac and Windows. It writes
+Drifting is an open-source, local-first novel writing app for Mac, Windows and Linux. It writes
 like a Markdown editor, builds a book the way classic writing studios like
 Scrivener do — chapters and outline, characters and world, storylines and
 research — and comes with an AI Agent that can read, search and edit the whole
@@ -40,6 +40,8 @@ From [GitHub Releases](https://github.com/chihumyum/Drifting/releases/latest):
   `Drifting_<version>_windows_x64-setup.exe`, or `…_arm64-setup.exe` for a PC
   with an Arm processor, and run it; it needs no administrator rights. See
   [Windows](docs/windows.md).
+- **Linux**: Linux x86_64. Download the `.AppImage` for a portable install or
+  the `.deb` package for Debian and Ubuntu. See [Linux](docs/linux.md).
 
 The app tells you when a new version is out; you choose when to install it.
 The first launch opens two sample projects you can explore or delete: *Pride
@@ -110,12 +112,12 @@ the [privacy policy](https://drifting.cc/privacy) and
 Scrivener is a long-standing desktop writing studio with no built-in AI;
 Novelcrafter is a web app for writing with AI that needs a connection. Drifting
 keeps the scaffolding of the first and adds an Agent for the whole book, in a
-free, open-source app for Mac and Windows that keeps your manuscripts on your
+free, open-source app for Mac, Windows and Linux that keeps your manuscripts on your
 computer as Markdown files.
 
 | | Drifting | Scrivener | Novelcrafter |
 | --- | --- | --- | --- |
-| Runs as | Mac and Windows apps | Mac, Windows and iOS apps | Web app |
+| Runs as | Mac, Windows and Linux apps | Mac, Windows and iOS apps | Web app |
 | Price | Free | One-time purchase | Subscription |
 | Source | Open source (AGPL) | Closed | Closed |
 | Offline | Yes | Yes | Needs a connection |

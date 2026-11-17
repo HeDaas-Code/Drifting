@@ -1,0 +1,93 @@
+name: Linux
+
+# Linux preview builds validate the native client and retain installable
+# AppImage/DEB artifacts for manual acceptance before a tagged release.
+on:
+  pull_request:
+  push:
+    branches: ['main', 'codex/linux-support', 'linux/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: linux / native build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      VITE_LOCAL_ONLY_MODE: 'true'
+      VITE_REQUIRE_AUTH: 'false'
+      VITE_AI_TRANSPORT: direct
+      VITE_API_BASE_URL: http://localhost:3000
+      API_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.1
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
+        with:
+          toolchain: 1.96.0
+          components: rustfmt
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: |
+            src-tauri
+            crates/drifting-core
+            crates/drifting-document
+            crates/drifting-prose
+      - name: Install Tauri Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential file libayatana-appindicator3-dev libgtk-3-dev \
+            libsecret-1-dev librsvg2-dev libwebkit2gtk-4.1-dev patchelf pkg-config \
+            xvfb
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.17.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
+      - run: pnpm typecheck
+      - run: pnpm exec vite build --config vite.renderer.config.ts
+      - name: Build AppImage and DEB packages
+        run: pnpm tauri:build -- --bundles appimage,deb
+      - name: Smoke test the AppImage
+        shell: bash
+        run: |
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' -print -quit)
+          test -n "$APPIMAGE"
+          chmod +x "$APPIMAGE"
+          LOG="$RUNNER_TEMP/drifting-linux.log"
+          timeout --signal=TERM 20s xvfb-run -a env WEBKIT_DISABLE_COMPOSITING_MODE=1 "$APPIMAGE" >"$LOG" 2>&1 &
+          PID=$!
+          sleep 8
+          if ! kill -0 "$PID" 2>/dev/null; then
+            cat "$LOG"
+            wait "$PID"
+          fi
+          kill "$PID" 2>/dev/null || true
+          wait "$PID" 2>/dev/null || true
+      - name: Collect Linux artifacts
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' -print -quit)
+          DEB=$(find src-tauri/target/release/bundle/deb -maxdepth 1 -name '*.deb' -print -quit)
+          test -f "$APPIMAGE" && test -f "$DEB"
+          mkdir -p out/linux
+          cp "$APPIMAGE" "out/linux/Drifting_${VERSION}_linux_x86_64.AppImage"
+          cp "$DEB" "out/linux/Drifting_${VERSION}_linux_x86_64.deb"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: drifting-linux-${{ github.sha }}
+          path: out/linux/*
+          if-no-files-found: error
+          retention-days: 14
