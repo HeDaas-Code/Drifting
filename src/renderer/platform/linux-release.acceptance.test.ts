@@ -47,6 +47,10 @@ describe('Linux desktop release', () => {
 
   it('runs native Linux validation in the preview workflow', () => {
     const workflow = source('.github/workflows/linux.yml');
+    expect(workflow).toContain('windows-build:');
+    expect(workflow).toContain('runs-on: windows-latest');
+    expect(workflow).toContain('--target x86_64-pc-windows-msvc --bundles nsis');
+    expect(workflow).toContain('Install and smoke test Drifting');
     expect(workflow).toContain('runs-on: ubuntu-24.04');
     expect(workflow).toContain('cargo test --manifest-path src-tauri/Cargo.toml --locked --lib');
     expect(workflow).toContain('pnpm tauri:build -- --bundles appimage,deb');

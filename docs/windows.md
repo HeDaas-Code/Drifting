@@ -1,40 +1,32 @@
 # Windows preview
 
 Status: **preview builds only.** Drifting's public releases are still macOS
-(Apple Silicon). Windows installers are built by
-[`.github/workflows/windows.yml`](../.github/workflows/windows.yml) on every
-push to `claude/windows-port` or a `windows/**` branch, and are not published.
+(Apple Silicon). The desktop preview workflow
+([`.github/workflows/linux.yml`](../.github/workflows/linux.yml)) builds an
+unsigned x64 NSIS installer on GitHub Actions, installs it on the runner, and
+uploads it as a 14-day workflow artifact. Preview installers are not published.
 
 ## Builds
 
 | Job | Runner | Result |
 | --- | --- | --- |
-| `windows / rust tests` | `windows-latest` (x64) | `cargo test --lib` for the Tauri crate on Windows |
-| `windows / developer commands` | `windows-latest` (x64) | the contributor commands below: install, typecheck, lint, tests, launcher manifests, developer CLI |
-| `windows / installer (x64)` | `windows-latest` | unsigned NSIS installer, Hosted sign-in enabled; installed and opened on the runner |
-| `windows / installer (arm64)` | `windows-11-arm` | the same for Windows on Arm |
+| `windows / x64 installer` | `windows-latest` | unsigned NSIS installer, installed and opened on the runner |
+| `linux / native build` | `ubuntu-24.04` | AppImage and DEB, with native tests and an AppImage launch check |
 
-Each installer job installs its installer silently, opens Drifting and fails
-when the App is no longer running 20 seconds later, printing what it wrote to
-standard error; an installer is uploaded only after it opened. A signed
-updater that cannot start (for example a build whose configuration lacks
-`plugins.updater`) no longer stops the App: Drifting opens and only its update
-check reports the reason.
+The Windows job installs the installer silently, opens Drifting and fails when
+the App is no longer running 20 seconds later; an installer is uploaded only
+after it opens.
 
-Each installer is a workflow artifact named
-`drifting-windows-<arch>-<commit>` and kept for 14 days. Windows installers can
-only be built on Windows; the macOS checkout never cross-compiles them.
+The Windows installer is a workflow artifact named
+`drifting-windows-x64-<commit>` and kept for 14 days. Windows installers can
+only be built on Windows; the Linux runner never cross-compiles them.
 
 The installer is per user (`installMode: currentUser`): it needs no
 administrator rights, installs under `%LOCALAPPDATA%`, and registers the
 `drifting:` link for sign-in. Its pages are in Simplified Chinese or English.
 It is not Authenticode-signed, so Windows SmartScreen may show "Windows
 protected your PC" on first launch (More info → Run anyway). Preview builds
-compile the updater public key in but sign no updates of their own
-(`DRIFTING_UPDATER_ARTIFACTS=off`): an installed preview updates to the next
-published release that ships Windows. Installing an update saves every local
-write first; the updater then quits Drifting, runs the installer in passive
-mode and reopens it.
+do not include updater configuration, so they do not offer automatic updates.
 
 To build and run Drifting from source on Windows, see
 [Developing on Windows](#developing-on-windows).
