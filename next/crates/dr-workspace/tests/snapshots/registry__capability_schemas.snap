@@ -12772,6 +12772,12 @@ expression: json
         },
         "TimelineView": {
           "properties": {
+            "calendar_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "deleted_at": {
               "default": null,
               "format": "int64",
@@ -16497,6 +16503,12 @@ expression: json
         },
         "TimelineView": {
           "properties": {
+            "calendar_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "deleted_at": {
               "default": null,
               "format": "int64",
@@ -16803,6 +16815,12 @@ expression: json
         },
         "TimelineView": {
           "properties": {
+            "calendar_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "deleted_at": {
               "default": null,
               "format": "int64",

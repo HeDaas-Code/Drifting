@@ -360,6 +360,8 @@ pub struct TimelineView {
     pub pins: Vec<TimelinePin>,
     #[serde(default)]
     pub deleted_at: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar_id: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -709,6 +711,7 @@ impl From<&dr_model::v3::TimelineView> for TimelineView {
             placements: v.placements.iter().map(Into::into).collect(),
             pins: v.pins.iter().map(Into::into).collect(),
             deleted_at: v.deleted_at.map(|t| t.0),
+            calendar_id: v.calendar_id.clone(),
         }
     }
 }

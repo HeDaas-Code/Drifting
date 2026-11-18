@@ -1237,6 +1237,9 @@ pub struct TimelineView {
     pub pins: Vec<TimelinePin>,
     #[serde(default)]
     pub deleted_at: Option<Timestamp>,
+    /// The display calendar is independent of the continuous timeline scale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar_id: Option<String>,
 }
 
 impl TimelineView {
@@ -3094,6 +3097,7 @@ mod tests {
             placements: Vec::new(),
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
         }];
         let memberships = vec![
             membership("cat", "chapter"),
@@ -3468,6 +3472,7 @@ mod tests {
             }],
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
         };
         let read = |entries: &BTreeMap<EntryId, Entry>| {
             let valid = filter_valid_memberships(&memberships, entries, &templates);
@@ -3561,6 +3566,7 @@ mod tests {
             }],
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
         };
 
         assert_eq!(
@@ -3964,6 +3970,7 @@ mod tests {
             ],
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
         };
 
         // `ch-1` belongs to `line-1` via membership; `ch-res` resides directly
@@ -4329,6 +4336,7 @@ mod tests {
                 placements: Vec::new(),
                 pins: Vec::new(),
                 deleted_at: None,
+                calendar_id: None,
             },
         )]);
 

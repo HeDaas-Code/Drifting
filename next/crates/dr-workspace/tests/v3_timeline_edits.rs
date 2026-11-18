@@ -714,3 +714,37 @@ fn set_lane_act_track_round_trips_preserves_siblings_and_undoes() {
     f.e.ws().redo(&Actor::User).unwrap().expect("redoable");
     assert_eq!(before, f.raw());
 }
+
+#[test]
+fn timeline_calendar_selection_survives_reopen() {
+    let mut f = Fixture::new();
+    let mut view =
+        f.e.out("timeline_view.list", json!({"book":f.book}))
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|view| view["id"] == "edit-view")
+            .unwrap()
+            .clone();
+    view["calendar_id"] = json!("fictional-calendar");
+    f.e.call("timeline_view.put", json!({"book":f.book,"view":view}));
+    let read = f.e.out("timeline_view.list", json!({"book":f.book}));
+    let calendar_id = read
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|view| view["id"] == "edit-view")
+        .unwrap()["calendar_id"]
+        .clone();
+    assert_eq!(calendar_id, "fictional-calendar");
+    f.e.reopen();
+    let read = f.e.out("timeline_view.list", json!({"book":f.book}));
+    let calendar_id = read
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|view| view["id"] == "edit-view")
+        .unwrap()["calendar_id"]
+        .clone();
+    assert_eq!(calendar_id, "fictional-calendar");
+}

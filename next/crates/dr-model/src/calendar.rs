@@ -70,7 +70,7 @@ impl CalendarSpec {
             return 0;
         };
         let period = i64::from(rule.every_years);
-        (year - 1 - rule.offset).div_euclid(period) + 1
+        (year - 1 - rule.offset).div_euclid(period) - (-1 - rule.offset).div_euclid(period)
     }
 
     fn days_before_year(&self, year: i64) -> i64 {
@@ -97,8 +97,32 @@ impl CalendarSpec {
     }
 
     pub fn validate(&self) -> Result<(), &'static str> {
-        if self.months.is_empty() || self.months.iter().any(|month| month.days == 0) {
-            return Err("months must be nonempty");
+        if self.id.trim().is_empty() || self.name.trim().is_empty() {
+            return Err("calendar id and name must be nonempty");
+        }
+        if self.months.is_empty()
+            || self
+                .months
+                .iter()
+                .any(|month| month.days == 0 || month.name.trim().is_empty())
+        {
+            return Err("months must have a name and positive length");
+        }
+        let month_names: std::collections::BTreeSet<_> = self
+            .months
+            .iter()
+            .map(|month| month.name.trim().to_lowercase())
+            .collect();
+        let era_names: std::collections::BTreeSet<_> = self
+            .eras
+            .iter()
+            .map(|era| era.name.trim().to_lowercase())
+            .collect();
+        if month_names.len() != self.months.len()
+            || self.eras.iter().any(|era| era.name.trim().is_empty())
+            || era_names.len() != self.eras.len()
+        {
+            return Err("calendar month and era names must be unique and nonempty");
         }
         if self.week_length == 0
             || self
@@ -226,6 +250,15 @@ mod tests {
     #[test]
     fn round_trips_negative_years_and_leap_months() {
         let cal = calendar();
+        let negative = Date {
+            year: -3,
+            month: 1,
+            day: 20,
+        };
+        assert_eq!(cal.to_day(negative).unwrap(), -131);
+        assert_eq!(cal.from_day(-131).unwrap(), negative);
+        assert_eq!(cal.days_before_year(0), 0);
+        assert_eq!(cal.days_before_year(5), 302);
         for date in [
             Date {
                 year: -3,
@@ -245,5 +278,19 @@ mod tests {
         ] {
             assert_eq!(cal.from_day(cal.to_day(date).unwrap()).unwrap(), date);
         }
+    }
+
+    #[test]
+    fn calendar_validation_rejects_ambiguous_labels_and_rules() {
+        let mut cal = calendar();
+        assert!(cal.validate().is_ok());
+        cal.months[1].name = cal.months[0].name.clone();
+        assert!(cal.validate().is_err());
+        cal = calendar();
+        cal.eras[1].name = cal.eras[0].name.clone();
+        assert!(cal.validate().is_err());
+        cal = calendar();
+        cal.leap.as_mut().unwrap().month = 4;
+        assert!(cal.validate().is_err());
     }
 }

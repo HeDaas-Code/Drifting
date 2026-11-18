@@ -1013,6 +1013,10 @@ pub struct TimelineViewWriterV3 {
 }
 
 impl TimelineViewWriterV3 {
+    pub fn calendar_id(&self, id: Option<&str>) -> Result<&Self> {
+        set(&self.map, "calendar_id", id)?;
+        Ok(self)
+    }
     /// The stored record of lane `entry`, made if missing; marks the book
     /// (DV2).
     fn lane(&self, entry: &EntryId) -> Result<LoroMap> {

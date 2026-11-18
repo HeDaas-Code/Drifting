@@ -289,6 +289,7 @@ impl Timeline {
                         placements: vec![],
                         pins: vec![],
                         deleted_at: None,
+                        calendar_id: None,
                     },
                 })
                 .map_err(|e| WsError::Internal(e.to_string()))?,

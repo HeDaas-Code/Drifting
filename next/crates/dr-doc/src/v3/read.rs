@@ -1318,6 +1318,7 @@ impl<'a> BookViewV3<'a> {
             placements,
             pins,
             deleted_at: f.ts("deleted_at"),
+            calendar_id: f.opt_string("calendar_id"),
         })
     }
 

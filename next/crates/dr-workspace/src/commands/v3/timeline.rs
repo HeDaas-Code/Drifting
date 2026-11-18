@@ -180,7 +180,10 @@ op! {
         let replaced = Replaces::record(CollectionV3::TimelineViews, &id);
         let (_, at) = cx.write_book_v3(&s, replaced, move |tx| {
             let w = tx.timeline_view(&tv.id)?;
-            w.name(&tv.name)?.pos(tv.pos.as_ref())?.deleted_at(None)?;
+            w.name(&tv.name)?
+                .pos(tv.pos.as_ref())?
+                .calendar_id(tv.calendar_id.as_deref())?
+                .deleted_at(None)?;
             if let Some(old) = old {
                 for l in old.lanes {
                     if !tv.lanes.iter().any(|x| x.entry == l.entry) {

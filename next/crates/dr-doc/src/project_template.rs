@@ -1365,6 +1365,7 @@ where
             placements: Vec::new(),
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
         };
 
         let eff_placements = effective_timeline_placements(
@@ -2289,6 +2290,7 @@ pub fn materialize_project_template(
             placements,
             pins,
             deleted_at: None,
+            calendar_id: None,
         });
     }
 

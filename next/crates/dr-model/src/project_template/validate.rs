@@ -712,6 +712,7 @@ pub fn validate_project_template_value(
             placements: Vec::new(),
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
         };
 
         let mut seen_placements = BTreeSet::new();

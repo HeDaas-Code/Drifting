@@ -1022,6 +1022,7 @@ pub fn novel_project_template_with(ids: &NovelRootEntries) -> ProjectTemplate {
         placements: Vec::new(),
         pins: Vec::new(),
         deleted_at: None,
+        calendar_id: None,
     }];
 
     ProjectTemplate {
