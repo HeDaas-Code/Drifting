@@ -27,6 +27,7 @@ pub mod crash;
 pub mod deep_link;
 pub mod diagnostics;
 pub mod dictation;
+pub mod external_agent;
 pub mod feedback;
 pub mod fonts;
 pub mod identity;
