@@ -99,6 +99,7 @@ pub struct AgentPanel {
     _subs: Vec<Subscription>,
     continuity: continuity::Continuity,
     dictation: Entity<dr_ui::dictation::Dictation>,
+    external: Option<Entity<crate::external::ExternalPanel>>,
 }
 
 impl AgentPanel {
@@ -147,6 +148,7 @@ impl AgentPanel {
             _subs: Vec::new(),
             continuity: Default::default(),
             dictation: dictation.clone(),
+            external: None,
         };
         panel._subs.push(cx.subscribe_in(
             &dictation,
@@ -271,6 +273,7 @@ impl AgentPanel {
         self.close_memory(cx);
         self.continuity = Default::default();
         self.dictation.update(cx, |view, cx| view.reset(cx));
+        self.external = None;
         self.book = book;
         self.name = name;
         self.selected = selected;
@@ -1384,10 +1387,35 @@ impl AgentPanel {
     }
 }
 
+impl AgentPanel {
+    fn backend_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let mut row = div().flex().flex_wrap().gap(px(5.)).p(px(6.));
+        for (id, label, platform) in [
+            ("internal", "Built in / 内置", None),
+            ("codex", "Codex", Some(dr_platform::external_agent::ExternalPlatform::Codex)),
+            ("dsh", "DeepSeek Harness", Some(dr_platform::external_agent::ExternalPlatform::DeepseekHarness)),
+        ] {
+            row = row.child(Button::new(id,label).small().disabled(self.active().is_some() || self.busy)
+                .on_click(cx.listener(move |panel,_,window,cx| {
+                    panel.dictation.update(cx,|view,cx|view.reset(cx));
+                    panel.external = platform.and_then(|platform| panel.book.as_ref().map(|book| {
+                        cx.new(|cx|crate::external::ExternalPanel::new(book.to_string(),platform,window,cx))
+                    }));
+                    cx.notify();
+                })));
+        }
+        row
+    }
+}
+
 impl Render for AgentPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::of(window, cx);
         let p = theme.palette;
+        if let Some(view) = self.external.clone() {
+            return div().id("agent-external-panel").size_full().flex().flex_col()
+                .child(self.backend_controls(cx)).child(div().flex_1().min_h_0().child(view)).into_any_element();
+        }
         let active = self.active().cloned();
         let empty = self
             .snapshot
@@ -1656,6 +1684,7 @@ impl Render for AgentPanel {
             .font_role(Role::Ui)
             .text_size(px(theme.scale.body))
             .text_color(p.ink(1).solid())
+            .child(self.backend_controls(cx))
             .child(
                 div()
                     .id("agent-transcript")
@@ -1674,7 +1703,7 @@ impl Render for AgentPanel {
                         .child(text::wrapped(error)),
                 )
             })
-            .child(footer)
+            .child(footer).into_any_element()
     }
 }
 

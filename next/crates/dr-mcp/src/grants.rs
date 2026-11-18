@@ -510,6 +510,14 @@ impl GrantStore {
         }
         .boxed()
     }
+    /// A sidebar session may only operate on the book it was started in.
+    pub fn create_for_book(&self, name: &str, book: &str) -> BoxFuture<'static, Result<ConnectionDescription>> {
+        let (name, book) = (name.to_owned(), book.to_owned());
+        self.enqueue(move |store| {
+            dr_model::id::BookId::parse(&book).map_err(|_| "Invalid book scope".to_owned())?;
+            store.create_scoped(&name, None, Some(book))
+        })
+    }
     pub fn create_manual(&self, name: &str) -> BoxFuture<'static, Result<ConnectionDescription>> {
         let name = name.to_owned();
         self.enqueue(move |store| store.create(&name, None))
@@ -737,6 +745,14 @@ impl SharedStore {
         name: &str,
         installation: Option<Installation>,
     ) -> Result<ConnectionDescription> {
+        self.create_scoped(name, installation, None)
+    }
+    fn create_scoped(
+        &self,
+        name: &str,
+        installation: Option<Installation>,
+        project_id: Option<String>,
+    ) -> Result<ConnectionDescription> {
         self.ensure_available()?;
         if name.trim().is_empty() || name.len() > 120 {
             return Err("Invalid MCP connection name".into());
@@ -766,7 +782,7 @@ impl SharedStore {
         let record = Record {
             id: private_files::random_hex()?,
             name: name.trim().into(),
-            project_id: None,
+            project_id,
             installation,
             token_hash: hash(&token),
             _retired_access: None,
