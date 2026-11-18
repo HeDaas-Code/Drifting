@@ -60,6 +60,7 @@ pub mod machine;
 pub mod migrate;
 mod origin;
 pub mod purge;
+pub mod versions;
 
 pub use error::{MigrationFailure, Result, StoreError};
 pub use events::{LibrarySubscription, LocalChange, LocalChangeKind, StoreEvent};
