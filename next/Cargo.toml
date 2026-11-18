@@ -211,7 +211,7 @@ dr-platform = { path = "crates/dr-platform" }
 dirs = "6.0"
 # Development only: proves the legacy Tauri layout (keyring 3.6, as the 0.1
 # client) reads back, and signs updater test artifacts with a throwaway key.
-keyring = { version = "3.6", default-features = false, features = ["apple-native", "windows-native"] }
+keyring = { version = "3.6", default-features = false, features = ["apple-native", "windows-native", "linux-native-sync-persistent"] }
 minisign = "0.10"
 minisign-verify = "0.3"
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFBase", "CFData", "CFDictionary", "CFNumber", "CFString"] }

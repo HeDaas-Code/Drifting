@@ -52,6 +52,9 @@ objc2-security.workspace = true
 [target.'cfg(windows)'.dependencies]
 windows.workspace = true
 
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring.workspace = true
+
 [dev-dependencies]
 keyring.workspace = true
 minisign.workspace = true

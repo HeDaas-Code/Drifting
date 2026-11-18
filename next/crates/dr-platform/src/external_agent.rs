@@ -33,7 +33,7 @@ impl ExternalCommand {
         Self {
             platform: ExternalPlatform::Codex,
             program: "codex".into(),
-            args: vec!["app-server".into() , "--listen-stdio".into()],
+            args: vec!["app-server".into(), "--stdio".into()],
         }
     }
 
@@ -62,24 +62,36 @@ impl ExternalSession {
             .stderr(Stdio::null())
             .spawn()
             .with_context(|| format!("could not start external Agent: {}", command.program))?;
-        let stdin = Arc::new(Mutex::new(child.stdin.take().context("external Agent stdin missing")?));
-        let stdout = child.stdout.take().context("external Agent stdout missing")?;
+        let stdin = Arc::new(Mutex::new(
+            child.stdin.take().context("external Agent stdin missing")?,
+        ));
+        let stdout = child
+            .stdout
+            .take()
+            .context("external Agent stdout missing")?;
         let (sender, events) = mpsc::channel();
         thread::spawn(move || {
             for line in BufReader::new(stdout).lines() {
-                let result = line
-                    .map_err(|error| error.to_string())
-                    .and_then(|line| serde_json::from_str::<Value>(&line).map_err(|error| error.to_string()));
+                let result = line.map_err(|error| error.to_string()).and_then(|line| {
+                    serde_json::from_str::<Value>(&line).map_err(|error| error.to_string())
+                });
                 if sender.send(result).is_err() {
                     break;
                 }
             }
         });
-        Ok(Self { child, stdin, events })
+        Ok(Self {
+            child,
+            stdin,
+            events,
+        })
     }
 
     pub fn send(&self, message: &Value) -> Result<()> {
-        let mut stdin = self.stdin.lock().map_err(|_| anyhow::anyhow!("external Agent stdin unavailable"))?;
+        let mut stdin = self
+            .stdin
+            .lock()
+            .map_err(|_| anyhow::anyhow!("external Agent stdin unavailable"))?;
         serde_json::to_writer(&mut *stdin, message)?;
         stdin.write_all(b"\n")?;
         stdin.flush()?;
@@ -143,8 +155,14 @@ mod tests {
 
     #[test]
     fn command_profiles_are_explicit() {
-        assert_eq!(ExternalCommand::codex().args, ["app-server", "--listen-stdio"]);
-        assert_eq!(ExternalCommand::deepseek_harness().args, ["--profile", "acp"]);
+        assert_eq!(
+            ExternalCommand::codex().args,
+            ["app-server", "--stdio"]
+        );
+        assert_eq!(
+            ExternalCommand::deepseek_harness().args,
+            ["--profile", "acp"]
+        );
     }
 
     #[test]
