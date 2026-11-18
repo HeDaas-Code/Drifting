@@ -130,15 +130,43 @@ impl Audio {
     }
 }
 
+pub fn model_path() -> Result<PathBuf> {
+    Ok(crate::AppDirs::for_identity(crate::Identity::current())?
+        .data
+        .join("dictation/ggml-model.bin"))
+}
+
+pub fn install_model(source: &Path) -> Result<PathBuf> {
+    let size = source.metadata()?.len();
+    if !(1_000_000..=2_000_000_000).contains(&size) {
+        bail!("Select a whisper.cpp GGML model between 1 MB and 2 GB");
+    }
+    let mut input = std::fs::File::open(source)?;
+    let mut magic = [0; 4];
+    input.read_exact(&mut magic)?;
+    if ![b"lmgg".as_slice(), b"ggml".as_slice()].contains(&magic.as_slice()) {
+        bail!("This is not a whisper.cpp GGML model");
+    }
+    let dest = model_path()?;
+    std::fs::create_dir_all(dest.parent().context("model directory missing")?)?;
+    let mut temp = tempfile::NamedTempFile::new_in(dest.parent().unwrap())?;
+    use std::io::{Seek as _, SeekFrom};
+    input.seek(SeekFrom::Start(0))?;
+    let copied = std::io::copy(&mut input.take(2_000_000_001), &mut temp)?;
+    if copied != size {
+        bail!("Model file changed while being copied");
+    }
+    temp.flush()?;
+    temp.as_file().sync_all()?;
+    temp.persist(&dest).map_err(|error| error.error)?;
+    Ok(dest)
+}
+
 pub fn configured_model() -> Option<PathBuf> {
     std::env::var_os("DRIFTING_WHISPER_MODEL")
         .map(PathBuf::from)
         .filter(|path| path.is_file())
-        .or_else(|| {
-            dirs::data_local_dir()
-                .map(|dir| dir.join("Drifting Next/dictation/ggml-base.bin"))
-                .filter(|path| path.is_file())
-        })
+        .or_else(|| model_path().ok().filter(|path| path.is_file()))
 }
 
 pub fn transcribe(audio: Audio, model: &Path, cancelled: &AtomicBool) -> Result<String> {
@@ -189,6 +217,9 @@ pub fn transcribe(audio: Audio, model: &Path, cancelled: &AtomicBool) -> Result<
         .read_to_string(&mut text)?;
     if text.len() as u64 > MAX_TEXT {
         bail!("Transcript is too large");
+    }
+    if cancelled.load(Ordering::Relaxed) {
+        bail!("Dictation cancelled");
     }
     Ok(text.trim().to_owned())
 }
