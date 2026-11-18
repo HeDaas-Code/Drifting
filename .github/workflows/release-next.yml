@@ -2,12 +2,6 @@ name: Next Release
 
 on:
   workflow_dispatch:
-    inputs:
-      publish:
-        description: Create a draft GitHub Release after all artifacts pass
-        required: true
-        default: true
-        type: boolean
 
 permissions:
   contents: write
@@ -25,19 +19,30 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Apply allocated version
-        env:
-          VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          sed -i "0,/version = \"0.2.0-dev\"/s//version = \"$VERSION\"/" next/app/drifting/Cargo.toml
-          sed -i "0,/name = \"drifting\"/{n;s/version = \"0.2.0-dev\"/version = \"$VERSION\"/}" next/Cargo.lock
         with:
           fetch-depth: 0
       - id: version
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          draft=$(gh release list --limit 100 --json tagName,isDraft --jq '[.[] | select(.isDraft and (.tagName | startswith("next-v0.2.0-alpha.")))] | .[0].tagName // empty')
+          if [[ -n "$draft" ]]; then
+            git fetch --force origin "refs/tags/$draft:refs/tags/$draft"
+            target=$(git rev-parse "$draft^{commit}")
+            if [[ "$target" == "$GITHUB_SHA" ]]; then
+              version=${draft#next-v}
+              echo "version=$version" >> "$GITHUB_OUTPUT"
+              echo "tag=$draft" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
           latest=$(git tag --list 'next-v0.2.0-alpha.*' --sort=-version:refname | head -n 1)
-          if [[ -z "$latest" ]]; then n=1; else n=$((10#${latest##*.} + 1)); fi
+          if [[ -z "$latest" ]]; then
+            n=1
+          else
+            n=$((10#${latest##*.} + 1))
+          fi
           version="0.2.0-alpha.$n"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=next-v$version" >> "$GITHUB_OUTPUT"
@@ -49,6 +54,8 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
         with:
           toolchain: 1.98.1
@@ -77,15 +84,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Apply allocated version
-        env:
-          VERSION: ${{ needs.version.outputs.version }}
-        run: sed -i "0,/version = \"0.2.0-dev\"/s//version = \"$VERSION\"/" next/app/drifting/Cargo.toml
       - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
         with:
           toolchain: 1.98.1
       - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install --yes build-essential clang cmake dpkg-dev libasound2-dev libdbus-1-dev libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev lld llvm pkg-config wget
+      - name: Apply allocated version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          sed -i '0,/version = "0.2.0-dev"/s//version = "'"$VERSION"'"/' next/app/drifting/Cargo.toml
+      - name: Refresh lockfile for allocated version
+        working-directory: next
+        run: cargo check -p drifting
       - working-directory: next
         run: cargo build --release --locked -p drifting
       - name: Build DEB and AppImage artifacts
@@ -112,6 +123,12 @@ jobs:
           Type=Application
           Categories=Office;Writing;
           EOF
+          cat > out/appimage/AppRun <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/drifting" "$@"
+          EOF
+          chmod +x out/appimage/AppRun
           dpkg-deb --build out/deb "Drifting_${VERSION}_linux_x86_64.deb"
           wget -q -O appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x appimagetool
@@ -128,6 +145,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
+        with:
+          toolchain: 1.98.1
+          targets: x86_64-pc-windows-msvc
       - name: Apply allocated version
         shell: pwsh
         env:
@@ -135,12 +158,11 @@ jobs:
         run: |
           $path = 'next/app/drifting/Cargo.toml'
           $text = Get-Content $path -Raw
-          $text = $text -replace 'version = "0.2.0-dev"', "version = \"$env:VERSION\"", 1
+          $text = [regex]::Replace($text, 'version = "0.2.0-dev"', ('version = "' + $env:VERSION + '"'), 1)
           Set-Content -Path $path -Value $text -NoNewline
-      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
-        with:
-          toolchain: 1.98.1
-          targets: x86_64-pc-windows-msvc
+      - name: Refresh lockfile for allocated version
+        working-directory: next
+        run: cargo check -p drifting
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Build NSIS installer
         shell: pwsh
@@ -149,7 +171,9 @@ jobs:
         run: |
           powershell -ExecutionPolicy Bypass -File next/script/bundle-windows.ps1 -BuildProfile release -Target x86_64-pc-windows-msvc
           New-Item -ItemType Directory -Force -Path out | Out-Null
-          Copy-Item "next/out/*windows*x64*.exe" "out/Drifting_${env:VERSION}_windows_x64-setup.exe"
+          $installer = Get-ChildItem next/target/bundle/*windows*x64*-setup.exe | Select-Object -First 1
+          if (-not $installer) { throw 'NSIS installer was not produced' }
+          Copy-Item $installer.FullName "out/Drifting_${env:VERSION}_windows_x64-setup.exe"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: next-windows-${{ needs.version.outputs.version }}
@@ -159,25 +183,45 @@ jobs:
   draft:
     name: create draft release
     needs: [version, linux, windows]
-    if: ${{ inputs.publish }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: release-files
       - name: Write release notes from commits
         env:
           VERSION: ${{ needs.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p release
-          git log --format='- %s (%h)' -20 > release/notes.md
-          printf '# Drifting Next %s\n\n' "$VERSION" | cat - release/notes.md > release/notes.tmp
-          mv release/notes.tmp release/notes.md
+          previous=$(gh release list --limit 100 --json tagName,isDraft --jq '[.[] | select((.isDraft | not) and (.tagName | startswith("next-v0.2.0-alpha.")))] | .[0].tagName // empty')
+          if [[ -z "$previous" ]]; then
+            range=c17f32bbc
+            title='Development baseline'
+          else
+            range="$previous..$GITHUB_SHA"
+            title="$previous"
+          fi
+          {
+            printf '# Drifting Next %s\n\nChanges since %s.\n\n' "$VERSION" "$title"
+            git log "$range" --format='%s' | awk '!seen[$0]++ { print "- " $0 }'
+            printf '\nCommits:\n'
+            git log "$range" --format='- %h %s'
+            printf '\nCompare: %s\n' "$range"
+          } > release/notes.md
           cp release-files/next-linux-*/* release-files/next-windows-*/* release/
           sha256sum release/* > release/SHA256SUMS.txt
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.version.outputs.tag }}
-        run: gh release create "$TAG" release/* --draft --title "Drifting Next ${{ needs.version.outputs.version }}" --notes-file release/notes.md
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/* --clobber
+            gh release edit "$TAG" --title "Drifting Next ${{ needs.version.outputs.version }}" --notes-file release/notes.md --draft
+          else
+            gh release create "$TAG" release/* --draft --target "$GITHUB_SHA" --title "Drifting Next ${{ needs.version.outputs.version }}" --notes-file release/notes.md
+          fi

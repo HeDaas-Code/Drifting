@@ -119,6 +119,8 @@ jobs:
       # rust-cache keeps ~/.cargo/bin, so the install is a no-op on a hit.
       - if: ${{ !cancelled() && matrix.platform == 'macos' }}
         run: cargo install cargo-audit --version 0.22.2 --locked
+      - if: ${{ !cancelled() && matrix.platform != 'macos' }}
+        run: cargo xtask check --skip audit
       - if: ${{ !cancelled() && matrix.platform == 'macos' }}
         run: cargo xtask check
       # The repository-wide public boundary (credentials, private paths,
