@@ -234,10 +234,10 @@ impl ExternalPanel {
                 }
                 cx.notify();
             });
-            if updated.is_err() || result.is_some() {
-                if let Some(Ok((_, _, _, id, _))) = result.take() {
-                    drop(store.revoke(&id));
-                }
+            if (updated.is_err() || result.is_some())
+                && let Some(Ok((_, _, _, id, _))) = result.take()
+            {
+                drop(store.revoke(&id));
             }
         })
         .detach();
@@ -260,12 +260,14 @@ impl ExternalPanel {
         }
     }
     fn poll(&mut self, cx: &mut Context<Self>) {
-        if let Some((store, id)) = &self.grant {
-            if !store.list().iter().any(|grant| &grant.id == id) {
-                self.disconnect(cx);
-                self.status = "Tool access was revoked / 工具权限已撤销".into();
-                return;
-            }
+        let grant_was_revoked = self
+            .grant
+            .as_ref()
+            .is_some_and(|(store, id)| !store.list().iter().any(|grant| &grant.id == id));
+        if grant_was_revoked {
+            self.disconnect(cx);
+            self.status = "Tool access was revoked / 工具权限已撤销".into();
+            return;
         }
         let mut changed = false;
         for _ in 0..128 {
@@ -372,11 +374,12 @@ impl ExternalPanel {
         }
     }
     fn append_delta(&mut self, text: &str, cx: &mut App) {
-        if let Some(last) = self.saved.messages.last_mut() {
-            if last.starts_with("Assistant / 助手: ") && last.len() < 512 * 1024 {
-                last.push_str(text);
-                return;
-            }
+        if let Some(last) = self.saved.messages.last_mut()
+            && last.starts_with("Assistant / 助手: ")
+            && last.len() < 512 * 1024
+        {
+            last.push_str(text);
+            return;
         }
         self.remember(format!("Assistant / 助手: {text}"), cx);
     }

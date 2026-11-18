@@ -966,8 +966,7 @@ impl Render for ChapterEditor {
         }
         // A material note or v3 body with embeds: tables on the clipboard, file drops/paste, and the highlight key.
         use gpui::{
-            DragMoveEvent, ExternalPaths, InteractiveElement as _, ParentElement as _, Styled as _,
-            prelude::FluentBuilder as _,
+            DragMoveEvent, ExternalPaths, InteractiveElement as _, prelude::FluentBuilder as _,
         };
         use gpui_prose::input::actions::{Copy, Cut, Paste};
         let dropline = self

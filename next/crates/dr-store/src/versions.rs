@@ -71,7 +71,7 @@ impl VersionStore {
                 versions.push(value);
             }
         }
-        versions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        versions.sort_by_key(|version| std::cmp::Reverse(version.created_at));
         Ok(versions)
     }
     pub fn restore_copy(&self, version: &BookVersion, destination: &Path) -> Result<()> {

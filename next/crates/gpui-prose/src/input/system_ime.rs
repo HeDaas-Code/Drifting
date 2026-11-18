@@ -95,7 +95,9 @@ impl SystemIme {
     /// The input method of `window`; `None` for a window without a native
     /// handle (GPUI's test windows) or on a platform without support.
     pub fn for_window(window: &Window) -> Option<SystemIme> {
-        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        use raw_window_handle::HasWindowHandle;
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        use raw_window_handle::RawWindowHandle;
         let handle = HasWindowHandle::window_handle(window).ok()?;
         match handle.as_raw() {
             #[cfg(target_os = "macos")]

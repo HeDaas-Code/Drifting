@@ -70,13 +70,13 @@ pub fn init(cx: &mut App) {
                         .bg(dr_ui::Theme::of(window, cx).palette.desk.solid())
                         .into_any_element();
                 }
-                if let Some(path) = mode.strip_prefix("image:") {
-                    if std::path::Path::new(path).is_file() {
-                        return gpui::img(std::path::PathBuf::from(path))
-                            .size_full()
-                            .object_fit(gpui::ObjectFit::Cover)
-                            .into_any_element();
-                    }
+                if let Some(path) = mode.strip_prefix("image:")
+                    && std::path::Path::new(path).is_file()
+                {
+                    return gpui::img(std::path::PathBuf::from(path))
+                        .size_full()
+                        .object_fit(gpui::ObjectFit::Cover)
+                        .into_any_element();
                 }
                 char_sea(&Sea::of(window, cx)).into_any_element()
             }),
