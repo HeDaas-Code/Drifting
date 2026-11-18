@@ -37,6 +37,7 @@ pub mod nav;
 pub mod notifications;
 pub mod pages;
 pub mod panes;
+pub mod pomodoro;
 pub mod quit;
 pub mod release;
 pub mod settings;
