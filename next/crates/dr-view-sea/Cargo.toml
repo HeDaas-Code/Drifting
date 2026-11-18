@@ -12,11 +12,13 @@ description = "字海 (M24): the sea of characters under the bookshelf and the f
 capture = ["gpui_platform/test-support"]
 
 [dependencies]
+anyhow.workspace = true
 dr-i18n.workspace = true
 dr-samples.workspace = true
 dr-shell.workspace = true
 dr-ui.workspace = true
 dr-workspace.workspace = true
+dirs.workspace = true
 gpui.workspace = true
 image.workspace = true
 log.workspace = true

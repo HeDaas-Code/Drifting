@@ -958,6 +958,7 @@
       "unlimitedHint": "Unlimited sets no model-call limit. You can stop the turn manually."
     },
     "appearance": {
+      "backdrop": "Backdrop",
       "dark": "Dark",
       "guides": "Guides",
       "interface_text_large": "Larger",

@@ -572,6 +572,15 @@ fn closed_anchor(
 /// corner where the traffic lights are, in their order.
 pub fn windows_caption(window: &mut Window, cx: &mut App) -> impl IntoElement {
     let mut row = div().absolute().top_0().left_0();
+    if cfg!(target_os = "linux") {
+        return row.child(
+            IconButton::new("linux-back", Icon::ArrowBack)
+                .label("Back")
+                .on_click(|_, window, cx| {
+                    window.dispatch_action(Box::new(crate::actions::GoBack), cx)
+                }),
+        );
+    }
     if !cfg!(target_os = "windows") {
         return row;
     }

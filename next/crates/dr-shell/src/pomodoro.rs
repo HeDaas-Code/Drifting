@@ -20,11 +20,16 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { focus_minutes: 25, short_break_minutes: 5, long_break_minutes: 15, rounds_before_long_break: 4 }
+        Self {
+            focus_minutes: 25,
+            short_break_minutes: 5,
+            long_break_minutes: 15,
+            rounds_before_long_break: 4,
+        }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Timer {
     pub book_id: String,
     pub phase: Phase,
@@ -36,7 +41,14 @@ pub struct Timer {
 
 impl Timer {
     pub fn start(book_id: impl Into<String>, now_ms: i64, settings: Settings) -> Self {
-        Self { book_id: book_id.into(), phase: Phase::Focus, round: 1, deadline_ms: now_ms + i64::from(settings.focus_minutes) * 60_000, paused_remaining_ms: None, muted: false }
+        Self {
+            book_id: book_id.into(),
+            phase: Phase::Focus,
+            round: 1,
+            deadline_ms: now_ms + i64::from(settings.focus_minutes) * 60_000,
+            paused_remaining_ms: None,
+            muted: false,
+        }
     }
 
     pub fn pause(mut self, now_ms: i64) -> Self {
@@ -45,16 +57,21 @@ impl Timer {
     }
 
     pub fn resume(mut self, now_ms: i64) -> Self {
-        if let Some(remaining) = self.paused_remaining_ms.take() { self.deadline_ms = now_ms + remaining; }
+        if let Some(remaining) = self.paused_remaining_ms.take() {
+            self.deadline_ms = now_ms + remaining;
+        }
         self
     }
 
     pub fn remaining_ms(&self, now_ms: i64) -> i64 {
-        self.paused_remaining_ms.unwrap_or_else(|| (self.deadline_ms - now_ms).max(0))
+        self.paused_remaining_ms
+            .unwrap_or_else(|| (self.deadline_ms - now_ms).max(0))
     }
 
     pub fn complete(mut self, now_ms: i64, settings: Settings) -> Self {
-        if self.phase == Phase::Focus { self.round += 1; }
+        if self.phase == Phase::Focus {
+            self.round += 1;
+        }
         self.phase = if self.phase != Phase::Focus {
             Phase::Focus
         } else if self.round > settings.rounds_before_long_break {
@@ -62,7 +79,11 @@ impl Timer {
         } else {
             Phase::ShortBreak
         };
-        let minutes = match self.phase { Phase::Focus => settings.focus_minutes, Phase::ShortBreak => settings.short_break_minutes, Phase::LongBreak => settings.long_break_minutes };
+        let minutes = match self.phase {
+            Phase::Focus => settings.focus_minutes,
+            Phase::ShortBreak => settings.short_break_minutes,
+            Phase::LongBreak => settings.long_break_minutes,
+        };
         self.deadline_ms = now_ms + i64::from(minutes) * 60_000;
         self.paused_remaining_ms = None;
         self
@@ -87,7 +108,10 @@ mod tests {
     fn fourth_focus_round_enters_long_break_then_focus() {
         let settings = Settings::default();
         let mut timer = Timer::start("book", 0, settings);
-        for _ in 0..3 { timer = timer.complete(0, settings); timer = timer.complete(0, settings); }
+        for _ in 0..3 {
+            timer = timer.complete(0, settings);
+            timer = timer.complete(0, settings);
+        }
         timer = timer.complete(0, settings);
         assert_eq!(timer.phase, Phase::LongBreak);
         timer = timer.complete(0, settings);

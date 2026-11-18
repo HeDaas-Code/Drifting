@@ -951,6 +951,7 @@
       "unlimitedHint": "「無上限」不設模型呼叫次數上限，你可以手動停止本輪。"
     },
     "appearance": {
+      "backdrop": "背景",
       "dark": "深色",
       "guides": "導覽",
       "interface_text_large": "較大",

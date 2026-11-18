@@ -148,7 +148,6 @@ impl CalendarSpec {
 
     pub fn from_day(&self, mut day: i64) -> Result<Date, &'static str> {
         self.validate()?;
-        let mut year = 0i64;
         let mut low = day.div_euclid(self.days_in_year(0).max(1) as i64).min(0) - 4;
         let mut high = day.div_euclid(self.days_in_year(0).max(1) as i64).max(0) + 4;
         while low + 1 < high {
@@ -159,7 +158,7 @@ impl CalendarSpec {
                 high = mid;
             }
         }
-        year = low;
+        let year = low;
         day -= self.days_before_year(year);
         for (month, spec) in self.months.iter().enumerate() {
             let length = u64::from(

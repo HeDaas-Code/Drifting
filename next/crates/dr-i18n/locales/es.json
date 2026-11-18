@@ -967,6 +967,7 @@
       "unlimitedHint": "Sin límite no fija un máximo de llamadas al modelo. Puedes detener el turno manualmente."
     },
     "appearance": {
+      "backdrop": "Fondo",
       "dark": "Oscuro",
       "guides": "Guías",
       "interface_text_large": "Grande",

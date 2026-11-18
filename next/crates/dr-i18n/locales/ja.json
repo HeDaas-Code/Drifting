@@ -951,6 +951,7 @@
       "unlimitedHint": "無制限ではモデル呼び出し回数に上限を設けません。ターンは手動で停止できます。"
     },
     "appearance": {
+      "backdrop": "背景",
       "dark": "ダーク",
       "guides": "ガイド",
       "interface_text_large": "大きめ",

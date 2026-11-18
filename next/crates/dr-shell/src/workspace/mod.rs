@@ -1391,9 +1391,8 @@ impl Workspace {
                 window.draw(cx).clear(cx);
             }
             this.update(cx, |ws, cx| {
-                if leaving && ws.show_shelf(window, cx) {
+                if leaving {
                     ws.save_left_working_copy(cx);
-                    return false;
                 }
                 ws.store_layout(cx);
                 true
@@ -1745,6 +1744,8 @@ impl Workspace {
                 ws.refocus(window, cx);
             } else if ws.nav.back() {
                 ws.changed(cx);
+            } else {
+                ws.show_shelf(window, cx);
             }
         }))
         .on_action(cx.listener(|ws, _: &GoForward, _, cx| {

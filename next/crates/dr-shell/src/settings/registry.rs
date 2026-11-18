@@ -159,6 +159,14 @@ pub fn privacy_url() -> &'static str {
 /// Every [`InfoRow`], in panel order.
 pub static INFO_ROWS: &[InfoRow] = &[
     InfoRow {
+        id: "appearance.backdrop",
+        section: Section::Appearance,
+        group: None,
+        label: keys::settings::appearance::BACKDROP,
+        description: None,
+        action: RowAction::Module,
+    },
+    InfoRow {
         id: "account.hosted",
         section: Section::Account,
         group: None,

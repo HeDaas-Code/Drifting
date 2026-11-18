@@ -958,6 +958,7 @@
       "unlimitedHint": "Unbegrenzt setzt kein Limit für Modellaufrufe. Du kannst die Runde manuell stoppen."
     },
     "appearance": {
+      "backdrop": "Hintergrund",
       "dark": "Dunkel",
       "guides": "Anleitungen",
       "interface_text_large": "Größer",

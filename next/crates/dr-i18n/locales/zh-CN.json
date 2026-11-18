@@ -945,6 +945,7 @@
       "unlimitedHint": "「无限制」不设模型调用次数上限，你可以手动停止本轮。"
     },
     "appearance": {
+      "backdrop": "背景",
       "dark": "深色",
       "guides": "引导",
       "interface_text_large": "较大",

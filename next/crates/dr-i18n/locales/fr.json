@@ -967,6 +967,7 @@
       "unlimitedHint": "Sans limite ne fixe aucun maximum d’appels au modèle. Vous pouvez arrêter le tour manuellement."
     },
     "appearance": {
+      "backdrop": "Arrière-plan",
       "dark": "Sombre",
       "guides": "Guides",
       "interface_text_large": "Grand",
