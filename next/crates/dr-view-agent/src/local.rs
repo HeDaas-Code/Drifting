@@ -3,6 +3,8 @@
 //! (it is not an account preference): an address on one computer means
 //! nothing on another. Keys stay in the credential store, one per server.
 
+use dr_agent::{CompatibleProtocol, LocalRoute};
+use dr_agent_providers::gateway;
 use dr_agent_providers::local::{
     self, AddressError, DiscoverError, Discovery, LocalAddress, Software,
 };
@@ -27,6 +29,8 @@ pub const MAX_CONTEXT: u64 = 100_000_000;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalServer {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<CompatibleProtocol>,
     pub id: String,
     pub base_url: String,
     /// The recognized software's name, or the address.
@@ -69,6 +73,18 @@ impl LocalServerModel {
 }
 
 impl LocalServer {
+    pub fn route(&self) -> LocalRoute {
+        LocalRoute {
+            server: self.id.clone(),
+            base_url: self.base_url.clone(),
+            protocol: self.protocol,
+        }
+    }
+
+    pub fn credential_scope(&self) -> Result<String, LocalFailure> {
+        gateway::credential_scope(&self.route()).map_err(|_| LocalFailure::Storage)
+    }
+
     /// `host:port`, this computer as `localhost`.
     pub fn display(&self) -> String {
         LocalAddress::parse(&self.base_url)
@@ -82,10 +98,16 @@ impl LocalServer {
 
     fn valid(&self) -> bool {
         dr_agent_providers::credentials::local_key_id(&self.id).is_ok()
-            && LocalAddress::parse(&self.base_url)
-                .is_ok_and(|address| address.base_url == self.base_url)
-            && !self.label.trim().is_empty()
-            && self.label.len() <= 256
+            && if self.protocol.is_some() {
+                gateway::base_url(&self.base_url).is_ok_and(|base| base == self.base_url)
+                    && !self.label.trim().is_empty()
+                    && self.label.len() <= 256
+            } else {
+                LocalAddress::parse(&self.base_url)
+                    .is_ok_and(|address| address.base_url == self.base_url)
+                    && !self.label.trim().is_empty()
+                    && self.label.len() <= 256
+            }
     }
 }
 
@@ -223,6 +245,39 @@ pub enum Probe {
 }
 
 impl ConnectionService {
+    /// Query models using the exact address and credential that would be saved.
+    pub async fn probe_gateway(
+        &self,
+        route: &LocalRoute,
+        change: &KeyChange,
+    ) -> Result<Probe, LocalFailure> {
+        let protocol = route.protocol.ok_or(LocalFailure::Unreachable)?;
+        let scope = gateway::credential_scope(route).map_err(|_| LocalFailure::Unreachable)?;
+        let key = match change {
+            KeyChange::Keep => self
+                .driver()
+                .credentials()
+                .local_key(&scope)
+                .await
+                .map_err(|_| LocalFailure::Storage)?,
+            KeyChange::Clear => None,
+            KeyChange::Set(value) => Some(value.trim().to_owned()),
+        };
+        match gateway::discover(
+            self.driver().http().raw(),
+            &route.base_url,
+            protocol,
+            key.as_deref(),
+        )
+        .await
+        {
+            Ok(list) => Ok(Probe::Listed(list)),
+            Err(DiscoverError::NoList) => Ok(Probe::NoList),
+            Err(DiscoverError::Unauthorized) => Err(LocalFailure::InvalidKey),
+            Err(_) => Err(LocalFailure::Unreachable),
+        }
+    }
+
     /// Parse what was typed, then ask the server for its models with the key
     /// the form would leave (`existing`: the server being edited).
     pub async fn probe_local(
@@ -280,24 +335,26 @@ impl ConnectionService {
         server: &LocalServer,
         config: dr_agent::RunConfig,
     ) -> Result<(), LocalFailure> {
-        let address =
-            LocalAddress::parse(&server.base_url).map_err(|_| LocalFailure::Unreachable)?;
-        let key = if server.has_key {
-            self.driver()
-                .credentials()
-                .local_key(&server.id)
+        if server.protocol.is_none() {
+            let address =
+                LocalAddress::parse(&server.base_url).map_err(|_| LocalFailure::Unreachable)?;
+            let key = if server.has_key {
+                self.driver()
+                    .credentials()
+                    .local_key(&server.id)
+                    .await
+                    .map_err(|_| LocalFailure::Storage)?
+            } else {
+                None
+            };
+            let http = self.driver().http().clone();
+            local::check(http.raw(), &address, key.as_deref())
                 .await
-                .map_err(|_| LocalFailure::Storage)?
-        } else {
-            None
-        };
-        let http = self.driver().http().clone();
-        local::check(http.raw(), &address, key.as_deref())
-            .await
-            .map_err(|error| match error {
-                DiscoverError::Unauthorized => LocalFailure::InvalidKey,
-                _ => LocalFailure::Unreachable,
-            })?;
+                .map_err(|error| match error {
+                    DiscoverError::Unauthorized => LocalFailure::InvalidKey,
+                    _ => LocalFailure::Unreachable,
+                })?;
+        }
         let driver = self.driver();
         // A thinking model may think before its 「OK」: the cap the three
         // providers' check gives thinking models.
@@ -317,6 +374,16 @@ impl ConnectionService {
 
     /// A fresh model list for a server whose list came from the server.
     pub async fn relist_local(&self, server: &LocalServer) -> Option<Discovery> {
+        if server.protocol.is_some() {
+            return match self
+                .probe_gateway(&server.route(), &KeyChange::Keep)
+                .await
+                .ok()?
+            {
+                Probe::Listed(list) => Some(list),
+                Probe::NoList => None,
+            };
+        }
         let address = LocalAddress::parse(&server.base_url).ok()?;
         let key = if server.has_key {
             self.driver()
@@ -403,6 +470,7 @@ mod tests {
     fn names_follow_the_software_and_a_repeat_takes_the_address() {
         let address = LocalAddress::parse("http://192.168.1.20:11434").unwrap();
         let ollama = LocalServer {
+            protocol: None,
             id: "a".into(),
             base_url: "http://localhost:11434".into(),
             label: "Ollama".into(),

@@ -7,6 +7,7 @@ mod conversation;
 pub mod credentials;
 mod deepseek;
 mod error;
+pub mod gateway;
 pub mod local;
 pub mod oauth;
 mod responses;

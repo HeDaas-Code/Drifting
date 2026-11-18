@@ -17,7 +17,10 @@ pub mod protocol;
 mod runtime;
 pub mod tools;
 
-pub use config::{LocalRoute, ModelCapabilities, ModelRoute, Provider, RunConfig, ThinkingLevel};
+pub use config::{
+    CompatibleProtocol, LocalRoute, ModelCapabilities, ModelRoute, Provider, RunConfig,
+    ThinkingLevel,
+};
 pub use control::{Cancellation, Control, RunHandle};
 pub use driver::{Driver, DriverEvent, DriverRequest, FinishReason, RequestPurpose};
 pub use journal::{JournalEvent, conversation, events};

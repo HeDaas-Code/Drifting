@@ -190,6 +190,7 @@ fn first_message(context_window: u64) -> (Vec<usize>, Value) {
 
     let mut config = RunConfig::new(Provider::Local, "qwen3:14b");
     config.route.local = Some(LocalRoute {
+        protocol: None,
         server: "synthetic-server".into(),
         base_url: fake.url.clone(),
     });
