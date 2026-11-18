@@ -331,6 +331,7 @@ dr-view-element-overview = { path = "crates/dr-view-element-overview" }
 # M24: the sea of characters, the first run and the tour.
 dr-view-sea = { path = "crates/dr-view-sea" }
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+cpal = "=0.16.0"
 # M41: manuscript export (EPUB, Word, PDF), Markdown share and covers, the
 # 0.1 client's writers ported as they were (docs/rust-rewrite/
 # simplifications.md). The PDF writer, its shaping and the system font

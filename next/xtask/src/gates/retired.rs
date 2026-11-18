@@ -56,13 +56,10 @@ pub fn patterns() -> Vec<(&'static str, Regex)> {
         ),
         ("retired Claude SDK session", p(&["sdk_", "session_id"])),
         (
-            "retired dictation",
+            "retired cloud dictation",
             p(&[
-                "qwen3?-",
-                "asr|\\bcp",
-                "al\\b|NSMicrophone",
-                "UsageDescription|byok\\.dash",
-                "scope",
+                "byok\\.dash",
+                "scope|dashscope\\.aliyuncs\\.com/.+(?:asr|recognition)",
             ]),
         ),
     ]

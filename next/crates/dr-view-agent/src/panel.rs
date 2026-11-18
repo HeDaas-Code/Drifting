@@ -2,13 +2,17 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use dr_agent::{AssistantMessage, ContentBlock, RequestId, Start, State};
 use dr_i18n::Arg;
 use dr_i18n::keys::agent_panel as k;
 use dr_model::id::{BookId, ConversationId};
+use dr_platform::dictation::{self, Recording};
 use dr_shell::{
     Workspace,
     nav::Open,
@@ -98,6 +102,9 @@ pub struct AgentPanel {
     _signal: Option<Task<()>>,
     _subs: Vec<Subscription>,
     continuity: continuity::Continuity,
+    dictation: Option<Recording>,
+    dictation_cancel: Option<Arc<AtomicBool>>,
+    dictation_busy: bool,
 }
 
 impl AgentPanel {
@@ -144,6 +151,9 @@ impl AgentPanel {
             _signal: None,
             _subs: Vec::new(),
             continuity: Default::default(),
+            dictation: None,
+            dictation_cancel: None,
+            dictation_busy: false,
         };
         panel._subs.push(
             cx.subscribe_in(&composer, window, |panel, _, event, _, cx| {
@@ -545,6 +555,80 @@ impl AgentPanel {
             .iter()
             .rev()
             .find(|run| !run.state.is_terminal())
+    }
+
+    /// Start or stop the local-only Whisper microphone. The model is never
+    /// downloaded by the app: set `DRIFTING_WHISPER_MODEL` or install the
+    /// documented model under the platform data directory.
+    pub fn toggle_dictation(&mut self, cx: &mut Context<Self>) {
+        if self.dictation_busy {
+            if let Some(cancel) = &self.dictation_cancel {
+                cancel.store(true, Ordering::Relaxed);
+            }
+            return;
+        }
+        if let Some(recording) = self.dictation.take() {
+            let Some(model) = dictation::configured_model() else {
+                self.error = Some("Install a local Whisper model first".into());
+                cx.notify();
+                return;
+            };
+            let cancel = Arc::new(AtomicBool::new(false));
+            self.dictation_cancel = Some(cancel.clone());
+            self.dictation_busy = true;
+            let audio = match recording.stop() {
+                Ok(audio) => audio,
+                Err(error) => {
+                    self.dictation_busy = false;
+                    self.dictation_cancel = None;
+                    self.error = Some(error.to_string());
+                    cx.notify();
+                    return;
+                }
+            };
+            let generation = self.generation;
+            cx.spawn(async move |panel, cx| {
+                let result = cx
+                    .background_executor()
+                    .spawn(async move { dictation::transcribe(audio, &model, &cancel) })
+                    .await;
+                let _ = panel.update(cx, |panel, cx| {
+                    if panel.generation != generation {
+                        return;
+                    }
+                    panel.dictation_busy = false;
+                    panel.dictation_cancel = None;
+                    match result {
+                        Ok(text) if !text.is_empty() => {
+                            let current = panel.composer.read(cx).text();
+                            let combined = if current.trim().is_empty() {
+                                text
+                            } else {
+                                format!("{} {}", current.trim_end(), text)
+                            };
+                            panel
+                                .composer
+                                .update(cx, |field, cx| field.set_text(combined, cx));
+                            panel.error = None;
+                        }
+                        Ok(_) => {}
+                        Err(error) => panel.error = Some(error.to_string()),
+                    }
+                    cx.notify();
+                });
+            })
+            .detach();
+            cx.notify();
+            return;
+        }
+        match Recording::start() {
+            Ok(recording) => {
+                self.dictation = Some(recording);
+                self.error = None;
+            }
+            Err(error) => self.error = Some(error.to_string()),
+        }
+        cx.notify();
     }
 
     pub fn send(&mut self, cx: &mut Context<Self>) {
@@ -1567,6 +1651,25 @@ impl Render for AgentPanel {
                 window,
                 cx,
             ))
+            .child(
+                Button::new(
+                    "agent-dictation",
+                    if self.dictation_busy || self.dictation.is_some() {
+                        "Stop dictation"
+                    } else {
+                        "Dictate"
+                    },
+                )
+                .small()
+                .icon(if self.dictation_busy || self.dictation.is_some() {
+                    sand::Icon::Stop
+                } else {
+                    sand::Icon::Mic
+                })
+                .disabled(self.busy)
+                .busy(self.dictation_busy)
+                .on_click(cx.listener(|panel, _, _, cx| panel.toggle_dictation(cx))),
+            )
             .child(
                 div()
                     .key_context("DrAgentComposer")

@@ -26,6 +26,7 @@ pub mod cli;
 pub mod crash;
 pub mod deep_link;
 pub mod diagnostics;
+pub mod dictation;
 pub mod feedback;
 pub mod fonts;
 pub mod identity;
