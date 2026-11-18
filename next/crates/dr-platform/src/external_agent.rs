@@ -1,18 +1,11 @@
-//! Small JSON-RPC-over-stdio bridge for external Agent platforms.
-//!
-//! The shell owns presentation; this module owns only process lifetime and
-//! framed messages. Codex App Server and DeepSeek Harness ACP are selected by
-//! an explicit command profile, so a failed external backend never falls back
-//! to the in-process model.
-
-use std::io::{BufRead, BufReader, Write};
-use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
-
+//! Explicit Codex App Server and DeepSeek Harness ACP stdio transports.
+//! This module never chooses a model or reads credentials.
 use anyhow::{Context as _, Result, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::io::{BufRead, BufReader, Write};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -20,14 +13,12 @@ pub enum ExternalPlatform {
     Codex,
     DeepseekHarness,
 }
-
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct ExternalCommand {
     pub platform: ExternalPlatform,
     pub program: String,
     pub args: Vec<String>,
 }
-
 impl ExternalCommand {
     pub fn codex() -> Self {
         Self {
@@ -36,7 +27,6 @@ impl ExternalCommand {
             args: vec!["app-server".into(), "--stdio".into()],
         }
     }
-
     pub fn deepseek_harness() -> Self {
         Self {
             platform: ExternalPlatform::DeepseekHarness,
@@ -45,103 +35,195 @@ impl ExternalCommand {
         }
     }
 }
-
-#[derive(Debug)]
-pub struct ExternalSession {
-    child: Child,
-    stdin: Arc<Mutex<ChildStdin>>,
-    events: mpsc::Receiver<Result<Value, String>>,
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct McpCommand {
+    pub command: String,
+    pub args: Vec<String>,
 }
 
+/// RPC builders are platform-specific; ACP methods must never be sent to Codex.
+#[derive(Clone, Debug)]
+pub struct Wire {
+    pub platform: ExternalPlatform,
+}
+impl Wire {
+    fn request(&self, id: u64, method: &str, params: Value) -> Value {
+        json!({"jsonrpc":"2.0","id":id,"method":method,"params":params})
+    }
+    pub fn initialize(&self) -> Value {
+        self.request(1, "initialize", match self.platform {
+            ExternalPlatform::Codex => json!({"clientInfo":{"name":"drifting-next","version":env!("CARGO_PKG_VERSION")},"capabilities":{"experimentalApi":false}}),
+            ExternalPlatform::DeepseekHarness => json!({"protocolVersion":1,"clientInfo":{"name":"drifting-next","version":env!("CARGO_PKG_VERSION")},"clientCapabilities":{}}),
+        })
+    }
+    pub fn open(&self, cwd: &str, resume: Option<&str>, mcp: &McpCommand) -> Result<Value> {
+        if !std::path::Path::new(cwd).is_absolute() {
+            bail!("External session directory must be absolute");
+        }
+        Ok(match self.platform {
+            ExternalPlatform::Codex => {
+                let config =
+                    json!({"mcp_servers":{"drifting":{"command":mcp.command,"args":mcp.args}}});
+                let mut params = json!({"cwd":cwd,"config":config});
+                if let Some(id) = resume {
+                    params["threadId"] = id.into();
+                }
+                self.request(
+                    2,
+                    if resume.is_some() {
+                        "thread/resume"
+                    } else {
+                        "thread/start"
+                    },
+                    params,
+                )
+            }
+            ExternalPlatform::DeepseekHarness => {
+                let mut params = json!({"cwd":cwd,"mcpServers":[{"name":"drifting","command":mcp.command,"args":mcp.args,"env":[]}]});
+                if let Some(id) = resume {
+                    params["sessionId"] = id.into();
+                }
+                self.request(
+                    2,
+                    if resume.is_some() {
+                        "session/load"
+                    } else {
+                        "session/new"
+                    },
+                    params,
+                )
+            }
+        })
+    }
+    pub fn prompt(&self, id: u64, session: &str, text: &str) -> Value {
+        match self.platform {
+            ExternalPlatform::Codex => self.request(id, "turn/start", json!({"threadId":session,"input":[{"type":"text","text":text,"text_elements":[]}]})),
+            ExternalPlatform::DeepseekHarness => self.request(id, "session/prompt", json!({"sessionId":session,"prompt":[{"type":"text","text":text}]})),
+        }
+    }
+    pub fn cancel(&self, id: u64, session: &str, turn: Option<&str>) -> Result<Value> {
+        Ok(match self.platform {
+            ExternalPlatform::Codex => self.request(
+                id,
+                "turn/interrupt",
+                json!({"threadId":session,"turnId":turn.context("Turn has not started yet")?}),
+            ),
+            ExternalPlatform::DeepseekHarness => {
+                json!({"jsonrpc":"2.0","method":"session/cancel","params":{"sessionId":session}})
+            }
+        })
+    }
+    pub fn session_id(&self, response: &Value) -> Option<String> {
+        match self.platform {
+            ExternalPlatform::Codex => response.pointer("/result/thread/id"),
+            ExternalPlatform::DeepseekHarness => response.pointer("/result/sessionId"),
+        }
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+    }
+}
+
+pub struct ExternalSession {
+    child: Child,
+    outgoing: SyncSender<Value>,
+    events: Receiver<Result<Value, String>>,
+    disconnected: bool,
+}
 impl ExternalSession {
     pub fn spawn(command: &ExternalCommand) -> Result<Self> {
-        let mut child = Command::new(&command.program)
-            .args(&command.args)
+        let mut cmd = Command::new(&command.program);
+        cmd.args(&command.args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .with_context(|| format!("could not start external Agent: {}", command.program))?;
-        let stdin = Arc::new(Mutex::new(
-            child.stdin.take().context("external Agent stdin missing")?,
-        ));
-        let stdout = child
-            .stdout
-            .take()
-            .context("external Agent stdout missing")?;
-        let (sender, events) = mpsc::channel();
-        thread::spawn(move || {
-            for line in BufReader::new(stdout).lines() {
-                let result = line.map_err(|error| error.to_string()).and_then(|line| {
-                    serde_json::from_str::<Value>(&line).map_err(|error| error.to_string())
-                });
-                if sender.send(result).is_err() {
+            .stderr(Stdio::null());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt as _;
+            cmd.creation_flags(0x08000000);
+        }
+        let mut child = cmd.spawn().context(
+            "External Agent could not start; check the executable and its own configuration",
+        )?;
+        let mut stdin = child.stdin.take().context("Missing Agent stdin")?;
+        let stdout = child.stdout.take().context("Missing Agent stdout")?;
+        let (outgoing, messages) = mpsc::sync_channel::<Value>(32);
+        let (sender, events) = mpsc::sync_channel(128);
+        let errors = sender.clone();
+        std::thread::spawn(move || {
+            for message in messages {
+                let result = (|| -> Result<()> {
+                    serde_json::to_writer(&mut stdin, &message)?;
+                    stdin.write_all(b"\n")?;
+                    stdin.flush()?;
+                    Ok(())
+                })();
+                if result.is_err() {
+                    let _ = errors.send(Err("External Agent disconnected while sending".into()));
                     break;
+                }
+            }
+        });
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(stdout);
+            loop {
+                // Avoid an unbounded protocol line or log stream allocation.
+                let mut bytes = Vec::new();
+                let mut bounded = (&mut reader).take(4 * 1024 * 1024 + 1);
+                use std::io::Read as _;
+                match bounded.read_until(b'\n', &mut bytes) {
+                    Ok(0) => {
+                        let _ = sender.send(Err("External Agent disconnected".into()));
+                        break;
+                    }
+                    Ok(_) if bytes.len() > 4 * 1024 * 1024 => {
+                        let _ = sender.send(Err("External Agent message exceeds 4 MiB".into()));
+                        break;
+                    }
+                    Ok(_) => {
+                        if sender
+                            .send(
+                                serde_json::from_slice(&bytes)
+                                    .map_err(|_| "Invalid external Agent message".into()),
+                            )
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                    Err(_) => {
+                        let _ = sender.send(Err("External Agent transport failed".into()));
+                        break;
+                    }
                 }
             }
         });
         Ok(Self {
             child,
-            stdin,
+            outgoing,
             events,
+            disconnected: false,
         })
     }
-
-    pub fn send(&self, message: &Value) -> Result<()> {
-        let mut stdin = self
-            .stdin
-            .lock()
-            .map_err(|_| anyhow::anyhow!("external Agent stdin unavailable"))?;
-        serde_json::to_writer(&mut *stdin, message)?;
-        stdin.write_all(b"\n")?;
-        stdin.flush()?;
-        Ok(())
-    }
-
-    pub fn try_recv(&self) -> Option<Result<Value, String>> {
-        self.events.try_recv().ok()
-    }
-
-    pub fn initialize(&self, client_name: &str) -> Result<()> {
-        self.send(&json!({
-            "jsonrpc":"2.0",
-            "id":1,
-            "method":"initialize",
-            "params":{"clientInfo":{"name":client_name,"version":env!("CARGO_PKG_VERSION")},"protocolVersion":1}
-        }))
-    }
-
-    pub fn start_session(&self, cwd: &str) -> Result<()> {
-        if !std::path::Path::new(cwd).is_absolute() {
-            bail!("external Agent session cwd must be absolute");
+    pub fn send(&self, message: Value) -> Result<()> {
+        if message.to_string().len() > 512 * 1024 {
+            bail!("External Agent input exceeds 512 KiB");
         }
-        self.send(&json!({
-            "jsonrpc":"2.0",
-            "id":2,
-            "method":"session/new",
-            "params":{"cwd":cwd}
-        }))
+        self.outgoing
+            .try_send(message)
+            .map_err(|_| anyhow::anyhow!("External Agent is not accepting messages"))
     }
-
-    pub fn prompt(&self, session_id: &str, text: &str) -> Result<()> {
-        self.send(&json!({
-            "jsonrpc":"2.0",
-            "id":3,
-            "method":"session/prompt",
-            "params":{"sessionId":session_id,"prompt":[{"type":"text","text":text}]}
-        }))
-    }
-
-    pub fn cancel(&self, session_id: &str) -> Result<()> {
-        self.send(&json!({
-            "jsonrpc":"2.0",
-            "id":4,
-            "method":"session/cancel",
-            "params":{"sessionId":session_id}
-        }))
+    pub fn try_recv(&mut self) -> Option<Result<Value, String>> {
+        match self.events.try_recv() {
+            Ok(event) => Some(event),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) if !self.disconnected => {
+                self.disconnected = true;
+                Some(Err("External Agent disconnected".into()))
+            }
+            Err(_) => None,
+        }
     }
 }
-
 impl Drop for ExternalSession {
     fn drop(&mut self) {
         let _ = self.child.kill();
@@ -152,26 +234,55 @@ impl Drop for ExternalSession {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn command_profiles_are_explicit() {
-        assert_eq!(
-            ExternalCommand::codex().args,
-            ["app-server", "--stdio"]
-        );
-        assert_eq!(
-            ExternalCommand::deepseek_harness().args,
-            ["--profile", "acp"]
-        );
+    fn platforms_use_distinct_session_prompt_and_cancel_methods() {
+        let mcp = McpCommand {
+            command: "/synthetic/drifting".into(),
+            args: vec!["--mcp".into()],
+        };
+        for (platform, open, prompt, stop) in [
+            (
+                ExternalPlatform::Codex,
+                "thread/start",
+                "turn/start",
+                "turn/interrupt",
+            ),
+            (
+                ExternalPlatform::DeepseekHarness,
+                "session/new",
+                "session/prompt",
+                "session/cancel",
+            ),
+        ] {
+            let wire = Wire { platform };
+            assert_eq!(wire.open("/synthetic", None, &mcp).unwrap()["method"], open);
+            assert_eq!(wire.prompt(4, "s", "hello")["method"], prompt);
+            assert_eq!(wire.cancel(5, "s", Some("turn")).unwrap()["method"], stop);
+            assert!(wire.open("relative", None, &mcp).is_err());
+        }
     }
-
     #[test]
-    fn cwd_must_be_absolute_before_writing_protocol() {
-        let error = ExternalSession::spawn(&ExternalCommand {
+    fn resume_and_mcp_configuration_are_not_global_config_edits() {
+        let wire = Wire {
             platform: ExternalPlatform::Codex,
-            program: "definitely-not-installed".into(),
-            args: Vec::new(),
-        });
-        assert!(error.is_err());
+        };
+        let mcp = McpCommand {
+            command: "/synthetic/drifting".into(),
+            args: vec!["--mcp".into()],
+        };
+        let request = wire.open("/synthetic", Some("old-thread"), &mcp).unwrap();
+        assert_eq!(request["method"], "thread/resume");
+        assert_eq!(request["params"]["threadId"], "old-thread");
+        assert_eq!(
+            request["params"]["config"]["mcp_servers"]["drifting"]["command"],
+            "/synthetic/drifting"
+        );
+        let acp = Wire {
+            platform: ExternalPlatform::DeepseekHarness,
+        };
+        assert_eq!(
+            acp.open("/synthetic", Some("s"), &mcp).unwrap()["method"],
+            "session/load"
+        );
     }
 }

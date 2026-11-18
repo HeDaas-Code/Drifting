@@ -1,0 +1,164 @@
+name: Next Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Create a draft GitHub Release after all artifacts pass
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: next-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: allocate Next alpha version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - id: version
+        shell: bash
+        run: |
+          latest=$(git tag --list 'next-v0.2.0-alpha.*' --sort=-version:refname | head -n 1)
+          if [[ -z "$latest" ]]; then n=1; else n=$((10#${latest##*.} + 1)); fi
+          version="0.2.0-alpha.$n"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=next-v$version" >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: verify Next workspace
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
+        with:
+          toolchain: 1.98.1
+          components: rustfmt, clippy, rust-src
+      - name: Install Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential clang cmake gettext-base libasound2-dev libdbus-1-dev libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev lld llvm pkg-config
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install fonttools==4.60.1
+      - run: python next/crates/dr-ui/script/build-fonts.py
+      - working-directory: next
+        run: cargo fmt --all --check
+      - working-directory: next
+        run: cargo clippy --workspace --all-targets --locked --keep-going -- -D warnings
+      - working-directory: next
+        run: cargo test --workspace --locked --no-fail-fast
+      - working-directory: next
+        run: cargo xtask check
+
+  linux:
+    name: package Linux
+    needs: [version, verify]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
+        with:
+          toolchain: 1.98.1
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install --yes build-essential clang cmake dpkg-dev libasound2-dev libdbus-1-dev libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev lld llvm pkg-config wget
+      - working-directory: next
+        run: cargo build --release --locked -p drifting
+      - name: Build DEB and AppImage artifacts
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir -p out/deb/usr/bin out/deb/DEBIAN out/appimage/usr/bin out/appimage/usr/share/applications
+          cp next/target/release/drifting "out/deb/usr/bin/drifting"
+          cp next/target/release/drifting "out/appimage/usr/bin/drifting"
+          chmod +x out/deb/usr/bin/drifting out/appimage/usr/bin/drifting
+          cat > out/deb/DEBIAN/control <<EOF
+          Package: drifting-next
+          Version: ${VERSION}
+          Section: editors
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Drifting
+          Description: Drifting Next writing client
+          EOF
+          cat > out/appimage/usr/share/applications/cc.drifting.next.desktop <<'EOF'
+          [Desktop Entry]
+          Name=Drifting Next
+          Exec=drifting
+          Type=Application
+          Categories=Office;Writing;
+          EOF
+          dpkg-deb --build out/deb "Drifting_${VERSION}_linux_x86_64.deb"
+          wget -q -O appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool out/appimage "Drifting_${VERSION}_linux_x86_64.AppImage"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: next-linux-${{ needs.version.outputs.version }}
+          path: Drifting_*_linux_x86_64.*
+          retention-days: 14
+
+  windows:
+    name: package Windows x64
+    needs: [version, verify]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
+        with:
+          toolchain: 1.98.1
+          targets: x86_64-pc-windows-msvc
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build NSIS installer
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          powershell -ExecutionPolicy Bypass -File next/script/bundle-windows.ps1 -BuildProfile release -Target x86_64-pc-windows-msvc
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Copy-Item "next/out/*windows*x64*.exe" "out/Drifting_${env:VERSION}_windows_x64-setup.exe"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: next-windows-${{ needs.version.outputs.version }}
+          path: out/*.exe
+          retention-days: 14
+
+  draft:
+    name: create draft release
+    needs: [version, linux, windows]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: release-files
+      - name: Write release notes from commits
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir -p release
+          git log --format='- %s (%h)' -20 > release/notes.md
+          printf '# Drifting Next %s\n\n' "$VERSION" | cat - release/notes.md > release/notes.tmp
+          mv release/notes.tmp release/notes.md
+          cp release-files/next-linux-*/* release-files/next-windows-*/* release/
+          sha256sum release/* > release/SHA256SUMS.txt
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: gh release create "$TAG" release/* --draft --title "Drifting Next ${{ needs.version.outputs.version }}" --notes-file release/notes.md

@@ -1392,17 +1392,38 @@ impl AgentPanel {
         let mut row = div().flex().flex_wrap().gap(px(5.)).p(px(6.));
         for (id, label, platform) in [
             ("internal", "Built in / 内置", None),
-            ("codex", "Codex", Some(dr_platform::external_agent::ExternalPlatform::Codex)),
-            ("dsh", "DeepSeek Harness", Some(dr_platform::external_agent::ExternalPlatform::DeepseekHarness)),
+            (
+                "codex",
+                "Codex",
+                Some(dr_platform::external_agent::ExternalPlatform::Codex),
+            ),
+            (
+                "dsh",
+                "DeepSeek Harness",
+                Some(dr_platform::external_agent::ExternalPlatform::DeepseekHarness),
+            ),
         ] {
-            row = row.child(Button::new(id,label).small().disabled(self.active().is_some() || self.busy)
-                .on_click(cx.listener(move |panel,_,window,cx| {
-                    panel.dictation.update(cx,|view,cx|view.reset(cx));
-                    panel.external = platform.and_then(|platform| panel.book.as_ref().map(|book| {
-                        cx.new(|cx|crate::external::ExternalPanel::new(book.to_string(),platform,window,cx))
-                    }));
-                    cx.notify();
-                })));
+            row = row.child(
+                Button::new(id, label)
+                    .small()
+                    .disabled(self.active().is_some() || self.busy)
+                    .on_click(cx.listener(move |panel, _, window, cx| {
+                        panel.dictation.update(cx, |view, cx| view.reset(cx));
+                        panel.external = platform.and_then(|platform| {
+                            panel.book.as_ref().map(|book| {
+                                cx.new(|cx| {
+                                    crate::external::ExternalPanel::new(
+                                        book.to_string(),
+                                        platform,
+                                        window,
+                                        cx,
+                                    )
+                                })
+                            })
+                        });
+                        cx.notify();
+                    })),
+            );
         }
         row
     }
@@ -1413,8 +1434,14 @@ impl Render for AgentPanel {
         let theme = Theme::of(window, cx);
         let p = theme.palette;
         if let Some(view) = self.external.clone() {
-            return div().id("agent-external-panel").size_full().flex().flex_col()
-                .child(self.backend_controls(cx)).child(div().flex_1().min_h_0().child(view)).into_any_element();
+            return div()
+                .id("agent-external-panel")
+                .size_full()
+                .flex()
+                .flex_col()
+                .child(self.backend_controls(cx))
+                .child(div().flex_1().min_h_0().child(view))
+                .into_any_element();
         }
         let active = self.active().cloned();
         let empty = self
@@ -1703,7 +1730,8 @@ impl Render for AgentPanel {
                         .child(text::wrapped(error)),
                 )
             })
-            .child(footer).into_any_element()
+            .child(footer)
+            .into_any_element()
     }
 }
 

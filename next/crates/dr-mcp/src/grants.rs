@@ -511,7 +511,11 @@ impl GrantStore {
         .boxed()
     }
     /// A sidebar session may only operate on the book it was started in.
-    pub fn create_for_book(&self, name: &str, book: &str) -> BoxFuture<'static, Result<ConnectionDescription>> {
+    pub fn create_for_book(
+        &self,
+        name: &str,
+        book: &str,
+    ) -> BoxFuture<'static, Result<ConnectionDescription>> {
         let (name, book) = (name.to_owned(), book.to_owned());
         self.enqueue(move |store| {
             dr_model::id::BookId::parse(&book).map_err(|_| "Invalid book scope".to_owned())?;
