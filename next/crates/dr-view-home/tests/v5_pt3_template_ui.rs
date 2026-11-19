@@ -554,7 +554,7 @@ fn edit_template_working_copy_autosaves_and_red_light_closes_after_save_then_new
 
     // Start on All Projects (`initial_book: None`).
     let (mut ws, mut vcx) = setup_app(cx, &lib, None);
-    let mut shelf = shelf_of(&ws, &mut vcx);
+    let mut shelf = shelf_of(&ws, vcx);
     wait(vcx, "shelf loaded with saved template", |vcx| {
         ws.read_with(vcx, |ws, _| ws.shelf_open)
             && shelf.read_with(vcx, |s, _| {
@@ -662,7 +662,7 @@ fn edit_template_working_copy_autosaves_and_red_light_closes_after_save_then_new
     let (shelf_ws, shelf_vcx) = spare_app.add_window_view(Workspace::new);
     ws = shelf_ws;
     vcx = shelf_vcx;
-    shelf = shelf_of(&ws, &mut vcx);
+    shelf = shelf_of(&ws, vcx);
     assert!(ws.read_with(vcx, |ws, _| ws.shelf_open));
     assert_eq!(shelf.read_with(vcx, |s, _| s.dialog()), None);
     assert_eq!(
@@ -686,7 +686,7 @@ fn edit_template_working_copy_autosaves_and_red_light_closes_after_save_then_new
     let (shelf_ws, shelf_vcx) = spare_app.add_window_view(Workspace::new);
     ws = shelf_ws;
     vcx = shelf_vcx;
-    shelf = shelf_of(&ws, &mut vcx);
+    shelf = shelf_of(&ws, vcx);
     assert!(ws.read_with(vcx, |ws, _| ws.shelf_open));
 
     // 4. Open 「新建项目」 dialog, pick `双线长篇`, click 「新建」:
