@@ -506,6 +506,19 @@
     "templateStructure": "Template structure",
     "unusedTemplates": "Unused templates"
   },
+  "bookVersions": {
+    "title": "Versions",
+    "name": "Version name",
+    "save": "Save version",
+    "empty": "No saved versions",
+    "restore": "Restore as a copy",
+    "confirmDelete": "Confirm deletion",
+    "failed": "Could not complete the version operation.",
+    "proseChanges": "Prose documents: {{added}} added, {{changed}} changed, {{removed}} removed",
+    "structureChanged": "Project structure changed",
+    "structureSame": "Project structure unchanged",
+    "assetsChanged": "Asset files changed: {{count}}"
+  },
   "pomodoro": {
     "activeBook": "Book: {{book}}",
     "end": "End",

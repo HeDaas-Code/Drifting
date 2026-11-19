@@ -196,6 +196,19 @@
       "verifying": "Verifying…"
     }
   },
+  "bookVersions": {
+    "assetsChanged": "Asset files changed: {{count}}",
+    "confirmDelete": "Confirm deletion",
+    "empty": "No saved versions",
+    "failed": "Could not complete the version operation.",
+    "name": "Version name",
+    "proseChanges": "Prose documents: {{added}} added, {{changed}} changed, {{removed}} removed",
+    "restore": "Restore as a copy",
+    "save": "Save version",
+    "structureChanged": "Project structure changed",
+    "structureSame": "Project structure unchanged",
+    "title": "Versions"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "Synopsis…",
     "untitledChapter": "Untitled chapter"

@@ -701,6 +701,7 @@ impl Library {
                 _lock: Some(lock),
             }),
         };
+        library.recover_book_imports()?;
         if library.inner.options.deriver.is_some() && library.inner.options.rebuild_indexes_on_open
         {
             library.spawn_index_rebuild();

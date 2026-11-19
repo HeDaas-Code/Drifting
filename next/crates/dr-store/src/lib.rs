@@ -45,6 +45,7 @@ pub mod agent;
 pub mod archive;
 pub mod asset;
 pub mod backup;
+mod book_import;
 pub mod digest;
 pub mod error;
 pub mod events;

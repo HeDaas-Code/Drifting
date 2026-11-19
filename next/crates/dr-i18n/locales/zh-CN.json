@@ -194,6 +194,19 @@
       "verifying": "验证中…"
     }
   },
+  "bookVersions": {
+    "assetsChanged": "变化的素材文件 {{count}} 个",
+    "confirmDelete": "确认删除",
+    "empty": "暂无已保存版本",
+    "failed": "版本操作失败。",
+    "name": "版本名称",
+    "proseChanges": "正文文档新增 {{added}} 篇，修改 {{changed}} 篇，移除 {{removed}} 篇",
+    "restore": "恢复为副本",
+    "save": "保存版本",
+    "structureChanged": "作品结构有变化",
+    "structureSame": "作品结构无变化",
+    "title": "版本"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "梗概…",
     "untitledChapter": "无标题章节"

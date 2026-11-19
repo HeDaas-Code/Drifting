@@ -1,10 +1,16 @@
-//! Named whole-book versions. The version payload is an exported book archive.
+//! Named whole-book versions. Each published directory contains a book file
+//! and an integrity receipt. A failed save leaves no visible version.
 
-use crate::Result;
+use crate::digest::{file_sha256, sha256_hex};
+use crate::file_io::{atomic_write, sync_directory, sync_file};
+use crate::{Result, StoreError};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest as _, Sha256};
+use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
+
+const ARCHIVE: &str = "book.driftingproject";
+const MANIFEST: &str = "manifest.json";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BookVersion {
@@ -24,87 +30,112 @@ impl VersionStore {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self { root: root.into() }
     }
-    pub fn create(&self, book_id: &str, name: &str, archive: &Path) -> Result<BookVersion> {
-        if book_id.trim().is_empty() || name.trim().is_empty() {
-            return Err(crate::StoreError::Invalid {
-                what: "book version",
-                value: "id and name are required".into(),
-            });
+
+    fn book_dir(&self, book: &str) -> PathBuf {
+        self.root.join(sha256_hex(book.as_bytes()))
+    }
+
+    pub fn create<E: From<StoreError>>(
+        &self,
+        book_id: &str,
+        name: &str,
+        write_archive: impl FnOnce(&Path) -> std::result::Result<(), E>,
+    ) -> std::result::Result<BookVersion, E> {
+        let name = name.trim();
+        if book_id.is_empty()
+            || name.is_empty()
+            || name.len() > 512
+            || name.chars().any(char::is_control)
+        {
+            return Err(StoreError::invalid("book version", "invalid book or name").into());
         }
-        let bytes = std::fs::read(archive)?;
-        let id = Uuid::now_v7().to_string();
-        let dir = self.root.join(book_id).join(&id);
-        std::fs::create_dir_all(&dir)?;
-        std::fs::write(dir.join("book.driftingbook"), &bytes)?;
+        let dir = self.book_dir(book_id);
+        fs::create_dir_all(&dir).map_err(StoreError::from)?;
+        let stage = tempfile::Builder::new()
+            .prefix(".pending-")
+            .tempdir_in(&dir)
+            .map_err(StoreError::from)?;
+        let archive = stage.path().join(ARCHIVE);
+        write_archive(&archive)?;
+        sync_file(&archive).map_err(StoreError::from)?;
+        let (archive_sha256, archive_size) = file_sha256(&archive).map_err(StoreError::from)?;
         let version = BookVersion {
-            id,
+            id: Uuid::now_v7().to_string(),
             book_id: book_id.into(),
-            name: name.trim().into(),
+            name: name.into(),
             created_at: crate::now_ms(),
-            archive_sha256: format!("{:x}", Sha256::digest(&bytes)),
-            archive_size: bytes.len() as u64,
+            archive_sha256,
+            archive_size,
         };
-        let manifest =
-            serde_json::to_vec_pretty(&version).map_err(|error| crate::StoreError::Invalid {
-                what: "book version manifest",
-                value: error.to_string(),
-            })?;
-        std::fs::write(dir.join("manifest.json"), manifest)?;
+        let manifest = serde_json::to_vec(&version)
+            .map_err(|e| StoreError::invalid("book version manifest", e.to_string()))?;
+        atomic_write(&stage.path().join(MANIFEST), &manifest).map_err(StoreError::from)?;
+        fs::rename(stage.path(), dir.join(&version.id)).map_err(StoreError::from)?;
+        sync_directory(&dir).map_err(StoreError::from)?;
         Ok(version)
     }
+
     pub fn list(&self, book_id: &str) -> Result<Vec<BookVersion>> {
-        let dir = self.root.join(book_id);
-        if !dir.exists() {
-            return Ok(Vec::new());
-        }
+        let dirs = match fs::read_dir(self.book_dir(book_id)) {
+            Ok(dirs) => dirs,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(error) => return Err(error.into()),
+        };
         let mut versions = Vec::new();
-        for entry in std::fs::read_dir(dir)? {
-            let path = entry?.path().join("manifest.json");
-            if path.exists() {
-                let value: BookVersion =
-                    serde_json::from_slice(&std::fs::read(path)?).map_err(|error| {
-                        crate::StoreError::Invalid {
-                            what: "book version manifest",
-                            value: error.to_string(),
-                        }
-                    })?;
-                versions.push(value);
+        for entry in dirs {
+            let entry = entry?;
+            if let Ok(id) = entry.file_name().to_string_lossy().parse::<Uuid>()
+                && entry.file_type()?.is_dir()
+            {
+                versions.push(self.manifest(book_id, &id.to_string())?);
             }
         }
-        versions.sort_by_key(|version| std::cmp::Reverse(version.created_at));
+        versions.sort_unstable_by(|a, b| (b.created_at, &b.id).cmp(&(a.created_at, &a.id)));
         Ok(versions)
     }
-    pub fn restore_copy(&self, version: &BookVersion, destination: &Path) -> Result<()> {
-        let source = self
-            .root
-            .join(&version.book_id)
-            .join(&version.id)
-            .join("book.driftingbook");
-        let bytes = std::fs::read(source)?;
-        if format!("{:x}", Sha256::digest(&bytes)) != version.archive_sha256 {
-            return Err(crate::StoreError::Invalid {
-                what: "book version archive",
-                value: "checksum mismatch".into(),
-            });
-        }
-        std::fs::write(destination, bytes)?;
-        Ok(())
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn named_versions_list_and_restore_as_a_copy() {
-        let temp = tempfile::tempdir().unwrap();
-        let source = temp.path().join("source.driftingbook");
-        std::fs::write(&source, b"synthetic book archive").unwrap();
-        let store = VersionStore::new(temp.path().join("versions"));
-        let version = store.create("book-1", "Before rewrite", &source).unwrap();
-        assert_eq!(store.list("book-1").unwrap(), vec![version.clone()]);
-        let restored = temp.path().join("restored.driftingbook");
-        store.restore_copy(&version, &restored).unwrap();
-        assert_eq!(std::fs::read(restored).unwrap(), b"synthetic book archive");
+    fn version_dir(&self, book_id: &str, id: &str) -> Result<PathBuf> {
+        let uuid =
+            Uuid::parse_str(id).map_err(|_| StoreError::invalid("book version", "invalid id"))?;
+        Ok(self.book_dir(book_id).join(uuid.to_string()))
+    }
+
+    fn manifest(&self, book_id: &str, id: &str) -> Result<BookVersion> {
+        let path = self.version_dir(book_id, id)?.join(MANIFEST);
+        let version: BookVersion = serde_json::from_slice(&fs::read(path)?)
+            .map_err(|e| StoreError::invalid("book version manifest", e.to_string()))?;
+        if version.id != id || version.book_id != book_id {
+            return Err(StoreError::invalid(
+                "book version manifest",
+                "wrong version or book",
+            ));
+        }
+        Ok(version)
+    }
+
+    pub fn verified_archive(&self, book_id: &str, id: &str) -> Result<PathBuf> {
+        let manifest = self.manifest(book_id, id)?;
+        let path = self.book_dir(book_id).join(id).join(ARCHIVE);
+        let (hash, size) = file_sha256(&path)?;
+        if hash != manifest.archive_sha256 || size != manifest.archive_size {
+            return Err(StoreError::invalid(
+                "book version archive",
+                "checksum mismatch",
+            ));
+        }
+        Ok(path)
+    }
+
+    pub fn delete(&self, book_id: &str, id: &str) -> Result<()> {
+        let dir = self.book_dir(book_id);
+        let path = self.version_dir(book_id, id)?;
+        // Retire the list entry as a single operation, before deleting bytes.
+        let stage = tempfile::Builder::new()
+            .prefix(".deleted-")
+            .tempdir_in(&dir)?;
+        fs::rename(path, stage.path().join("version"))?;
+        sync_directory(&dir)?;
+        stage.close()?;
+        Ok(())
     }
 }

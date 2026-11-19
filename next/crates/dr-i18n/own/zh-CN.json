@@ -488,6 +488,19 @@
     "templateStructure": "模板结构",
     "unusedTemplates": "未使用的模板"
   },
+  "bookVersions": {
+    "title": "版本",
+    "name": "版本名称",
+    "save": "保存版本",
+    "empty": "暂无已保存版本",
+    "restore": "恢复为副本",
+    "confirmDelete": "确认删除",
+    "failed": "版本操作失败。",
+    "proseChanges": "正文文档新增 {{added}} 篇，修改 {{changed}} 篇，移除 {{removed}} 篇",
+    "structureChanged": "作品结构有变化",
+    "structureSame": "作品结构无变化",
+    "assetsChanged": "变化的素材文件 {{count}} 个"
+  },
   "pomodoro": {
     "activeBook": "作品：{{book}}",
     "end": "结束",

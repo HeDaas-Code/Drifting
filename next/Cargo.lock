@@ -2321,6 +2321,7 @@ dependencies = [
  "color_quant",
  "dr-agent-tools",
  "dr-doc",
+ "dr-export",
  "dr-i18n",
  "dr-model",
  "dr-shell",

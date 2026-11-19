@@ -196,6 +196,19 @@
       "verifying": "正在驗證…"
     }
   },
+  "bookVersions": {
+    "assetsChanged": "有 {{count}} 個素材檔案變更",
+    "confirmDelete": "確認刪除",
+    "empty": "沒有已儲存的版本",
+    "failed": "版本操作失敗。",
+    "name": "版本名稱",
+    "proseChanges": "正文文件新增 {{added}} 篇、修改 {{changed}} 篇、移除 {{removed}} 篇",
+    "restore": "還原為副本",
+    "save": "儲存版本",
+    "structureChanged": "作品結構有變更",
+    "structureSame": "作品結構無變更",
+    "title": "版本"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "梗概…",
     "untitledChapter": "未命名章節"

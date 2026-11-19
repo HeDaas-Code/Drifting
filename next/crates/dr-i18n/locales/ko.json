@@ -196,6 +196,19 @@
       "verifying": "검증 중…"
     }
   },
+  "bookVersions": {
+    "assetsChanged": "변경된 자료 파일 {{count}}개",
+    "confirmDelete": "삭제 확인",
+    "empty": "저장된 버전 없음",
+    "failed": "버전 작업을 완료하지 못했습니다.",
+    "name": "버전 이름",
+    "proseChanges": "본문 문서 추가 {{added}}개, 변경 {{changed}}개, 삭제 {{removed}}개",
+    "restore": "복사본으로 복원",
+    "save": "버전 저장",
+    "structureChanged": "작품 구조 변경됨",
+    "structureSame": "작품 구조 변경 없음",
+    "title": "버전"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "줄거리…",
     "untitledChapter": "제목 없는 장"

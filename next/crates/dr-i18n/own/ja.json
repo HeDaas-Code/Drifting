@@ -490,6 +490,19 @@
     "templateStructure": "テンプレートの構造",
     "unusedTemplates": "未使用のテンプレート"
   },
+  "bookVersions": {
+    "title": "バージョン",
+    "name": "バージョン名",
+    "save": "バージョンを保存",
+    "empty": "保存したバージョンはありません",
+    "restore": "コピーとして復元",
+    "confirmDelete": "削除を確定",
+    "failed": "バージョン操作に失敗しました。",
+    "proseChanges": "本文文書：追加 {{added}}、変更 {{changed}}、削除 {{removed}}",
+    "structureChanged": "作品の構造に変更あり",
+    "structureSame": "作品の構造に変更なし",
+    "assetsChanged": "素材ファイルの変更：{{count}}"
+  },
   "pomodoro": {
     "activeBook": "作品：{{book}}",
     "end": "終了",

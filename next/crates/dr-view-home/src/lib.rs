@@ -4,6 +4,7 @@ mod project_template;
 pub mod save_template;
 mod structure_thumbnail;
 pub mod v3;
+mod versions;
 
 pub use agent_cards::{
     AgentCards, AgentCardsHost, clear_agent_cards, has_agent_cards, set_agent_cards,

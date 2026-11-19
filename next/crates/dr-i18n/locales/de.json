@@ -196,6 +196,19 @@
       "verifying": "Wird geprüft…"
     }
   },
+  "bookVersions": {
+    "assetsChanged": "Geänderte Materialdateien: {{count}}",
+    "confirmDelete": "Löschen bestätigen",
+    "empty": "Keine gespeicherten Versionen",
+    "failed": "Der Versionsvorgang ist fehlgeschlagen.",
+    "name": "Versionsname",
+    "proseChanges": "Textdokumente: {{added}} hinzugefügt, {{changed}} geändert, {{removed}} entfernt",
+    "restore": "Als Kopie wiederherstellen",
+    "save": "Version speichern",
+    "structureChanged": "Projektstruktur geändert",
+    "structureSame": "Projektstruktur unverändert",
+    "title": "Versionen"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "Kurzfassung…",
     "untitledChapter": "Unbenanntes Kapitel"

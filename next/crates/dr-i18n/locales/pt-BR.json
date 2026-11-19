@@ -198,6 +198,19 @@
       "verifying": "Verificando…"
     }
   },
+  "bookVersions": {
+    "assetsChanged": "Arquivos de material alterados: {{count}}",
+    "confirmDelete": "Confirmar exclusão",
+    "empty": "Nenhuma versão salva",
+    "failed": "Não foi possível concluir a operação.",
+    "name": "Nome da versão",
+    "proseChanges": "Documentos de texto: {{added}} adicionados, {{changed}} alterados, {{removed}} removidos",
+    "restore": "Restaurar como cópia",
+    "save": "Salvar versão",
+    "structureChanged": "Estrutura do projeto alterada",
+    "structureSame": "Estrutura do projeto inalterada",
+    "title": "Versões"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "Sinopse…",
     "untitledChapter": "Capítulo sem título"

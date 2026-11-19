@@ -508,6 +508,19 @@
     "templateStructure": "Structure des modèles",
     "unusedTemplates": "Modèles inutilisés"
   },
+  "bookVersions": {
+    "title": "Versions",
+    "name": "Nom de la version",
+    "save": "Enregistrer la version",
+    "empty": "Aucune version enregistrée",
+    "restore": "Restaurer en tant que copie",
+    "confirmDelete": "Confirmer la suppression",
+    "failed": "L’opération sur la version a échoué.",
+    "proseChanges": "Documents de texte : {{added}} ajoutés, {{changed}} modifiés, {{removed}} supprimés",
+    "structureChanged": "Structure du projet modifiée",
+    "structureSame": "Structure du projet inchangée",
+    "assetsChanged": "Fichiers de ressources modifiés : {{count}}"
+  },
   "pomodoro": {
     "activeBook": "Livre : {{book}}",
     "end": "Terminer",

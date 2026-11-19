@@ -196,6 +196,19 @@
       "verifying": "検証中…"
     }
   },
+  "bookVersions": {
+    "assetsChanged": "素材ファイルの変更：{{count}}",
+    "confirmDelete": "削除を確定",
+    "empty": "保存したバージョンはありません",
+    "failed": "バージョン操作に失敗しました。",
+    "name": "バージョン名",
+    "proseChanges": "本文文書：追加 {{added}}、変更 {{changed}}、削除 {{removed}}",
+    "restore": "コピーとして復元",
+    "save": "バージョンを保存",
+    "structureChanged": "作品の構造に変更あり",
+    "structureSame": "作品の構造に変更なし",
+    "title": "バージョン"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "あらすじ…",
     "untitledChapter": "無題の章"

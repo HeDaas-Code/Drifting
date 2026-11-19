@@ -764,6 +764,9 @@ impl Render for Home {
                 );
             }
         }
+        if !self.template_workspace() && self.lib.is_some() {
+            column = column.child(crate::versions::entry(self, &book, cx));
+        }
         column = column.child(self.render_project_template_block(&book, has_book, window, cx));
         div()
             .id("project-home-v3")

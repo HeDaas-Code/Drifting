@@ -506,6 +506,19 @@
     "templateStructure": "Vorlagenstruktur",
     "unusedTemplates": "Unbenutzte Vorlagen"
   },
+  "bookVersions": {
+    "title": "Versionen",
+    "name": "Versionsname",
+    "save": "Version speichern",
+    "empty": "Keine gespeicherten Versionen",
+    "restore": "Als Kopie wiederherstellen",
+    "confirmDelete": "Löschen bestätigen",
+    "failed": "Der Versionsvorgang ist fehlgeschlagen.",
+    "proseChanges": "Textdokumente: {{added}} hinzugefügt, {{changed}} geändert, {{removed}} entfernt",
+    "structureChanged": "Projektstruktur geändert",
+    "structureSame": "Projektstruktur unverändert",
+    "assetsChanged": "Geänderte Materialdateien: {{count}}"
+  },
   "pomodoro": {
     "activeBook": "Buch: {{book}}",
     "end": "Beenden",

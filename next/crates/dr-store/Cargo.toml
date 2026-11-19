@@ -16,6 +16,7 @@ rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
 zip.workspace = true
@@ -31,4 +32,3 @@ dr-model.workspace = true
 dr-corpus.workspace = true
 # Only to check that the outline trims exactly what dr-text trims.
 prose-metrics.workspace = true
-tempfile.workspace = true

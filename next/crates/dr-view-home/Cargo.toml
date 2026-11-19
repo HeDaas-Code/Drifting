@@ -17,6 +17,7 @@ anyhow.workspace = true
 chrono.workspace = true
 color_quant = { workspace = true, optional = true }
 dr-doc.workspace = true
+dr-export.workspace = true
 dr-i18n.workspace = true
 dr-model.workspace = true
 dr-shell.workspace = true
