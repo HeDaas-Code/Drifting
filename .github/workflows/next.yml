@@ -8,7 +8,7 @@ name: next
 # client.
 on:
   push:
-    branches: [main]
+    branches: [main, codex/next-desktop]
     paths:
       - 'next/**'
       - 'docs/rust-rewrite/**'
