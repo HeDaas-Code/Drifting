@@ -57,6 +57,26 @@ fn wait(cx: &mut VisualTestContext, stage: &str, done: impl Fn(&mut VisualTestCo
     }
 }
 
+fn wait_for_saved_close(cx: &mut TestAppContext, lib: &Library, template: &str) {
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        cx.executor().advance_clock(Duration::from_millis(30));
+        cx.run_until_parked();
+        let current =
+            call(lib, "project_template.get", json!({"id": template}))["summary"]["description"]
+                .clone();
+        let count = cx.windows().len();
+        if count == 0 && current == "修订后的梗概" {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "template close did not save and close (windows={count}, description={current})"
+        );
+        std::thread::sleep(Duration::from_millis(3));
+    }
+}
+
 /// A dialog that only stands over the page, for the red light.
 struct OverPage;
 
@@ -514,7 +534,7 @@ fn save_template_dialog_tree_locks_ancestors_agent_isolation_overwrite_and_libra
 }
 
 #[gpui::test]
-fn edit_template_working_copy_autosaves_undoes_and_red_light_returns_to_shelf_then_new_project_selects_title(
+fn edit_template_working_copy_autosaves_and_red_light_closes_after_save_then_new_project_selects_title(
     cx: &mut TestAppContext,
 ) {
     let (_dir, _root, lib, book) = seed_library();
@@ -533,8 +553,8 @@ fn edit_template_working_copy_autosaves_undoes_and_red_light_returns_to_shelf_th
         .to_owned();
 
     // Start on All Projects (`initial_book: None`).
-    let (ws, vcx) = setup_app(cx, &lib, None);
-    let shelf = shelf_of(&ws, vcx);
+    let (mut ws, mut vcx) = setup_app(cx, &lib, None);
+    let mut shelf = shelf_of(&ws, &mut vcx);
     wait(vcx, "shelf loaded with saved template", |vcx| {
         ws.read_with(vcx, |ws, _| ws.shelf_open)
             && shelf.read_with(vcx, |s, _| {
@@ -631,24 +651,26 @@ fn edit_template_working_copy_autosaves_undoes_and_red_light_returns_to_shelf_th
     });
     vcx.simulate_input("修订后的梗概");
 
-    // 3. Clicking the window's red close light (`simulate_close`) inside the working copy
-    //    does NOT close the window (`returns false`) and does NOT prompt: it steps straight
-    //    back to 「全部项目」, with nothing left floating over it.
+    // 3. The close request is deferred while the focused field settles and the
+    //    working copy saves, then the window closes.
+    let mut spare_app = vcx.cx.clone();
     assert!(
         !vcx.simulate_close(),
-        "red close light in a template working copy must return to All projects without closing the window"
+        "working-copy close waits for its save barrier"
     );
-    assert!(ws.read_with(vcx, |ws, _| {
-        ws.shelf_open && ws.dialog.is_none() && ws.settings.is_none() && ws.history.is_none()
-    }));
+    wait_for_saved_close(&mut spare_app, &lib, &tpl_id);
+    let (shelf_ws, shelf_vcx) = spare_app.add_window_view(Workspace::new);
+    ws = shelf_ws;
+    vcx = shelf_vcx;
+    shelf = shelf_of(&ws, &mut vcx);
+    assert!(ws.read_with(vcx, |ws, _| ws.shelf_open));
     assert_eq!(shelf.read_with(vcx, |s, _| s.dialog()), None);
-    wait(vcx, "leaving saved the focused synopsis", |_| {
-        call(&lib, "project_template.get", json!({"id": tpl_id}))["summary"]["description"]
-            == "修订后的梗概"
-    });
+    assert_eq!(
+        call(&lib, "project_template.get", json!({"id": tpl_id}))["summary"]["description"],
+        "修订后的梗概"
+    );
 
-    // Reopened for editing, the working copy shows what was typed before the
-    // red light; the red light takes it back to 全部项目 again.
+    // Reopen the saved template from a fresh workspace.
     vcx.update(|window, cx| shelf.update(cx, |s, cx| s.edit_template(&tpl_id, window, cx)));
     wait(vcx, "working copy reopened on Home", |vcx| {
         ws.read_with(vcx, |ws, _| !ws.shelf_open && ws.book.id == ws.book_id)
@@ -658,7 +680,13 @@ fn edit_template_working_copy_autosaves_undoes_and_red_light_returns_to_shelf_th
     wait(vcx, "the reopened synopsis", |vcx| {
         synopsis.read_with(vcx, |f, _| f.text()) == "修订后的梗概"
     });
+    let mut spare_app = vcx.cx.clone();
     assert!(!vcx.simulate_close());
+    wait_for_saved_close(&mut spare_app, &lib, &tpl_id);
+    let (shelf_ws, shelf_vcx) = spare_app.add_window_view(Workspace::new);
+    ws = shelf_ws;
+    vcx = shelf_vcx;
+    shelf = shelf_of(&ws, &mut vcx);
     assert!(ws.read_with(vcx, |ws, _| ws.shelf_open));
 
     // 4. Open 「新建项目」 dialog, pick `双线长篇`, click 「新建」:

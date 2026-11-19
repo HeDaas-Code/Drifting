@@ -1367,14 +1367,12 @@ impl Workspace {
         cx.notify();
     }
 
-    /// The red light closes the window, in an ordinary book as on 全部项目:
-    /// the book's layout is stored first, so the next launch opens it as it
-    /// was. In a project template's working copy (`project-templates.md` §12,
-    /// PT3), it returns to 全部项目 instead of closing the window
-    /// ([`working_copy`]).
+    /// A template working copy delays closing until focused fields settle and
+    /// the copy is saved; ordinary books store their layout before closing.
     fn listen_on_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let this = cx.weak_entity();
         window.on_window_should_close(cx, move |window, cx| {
+            let close_after = window.window_handle();
             let leaving = this
                 .update(cx, |ws, cx| {
                     let leaving = ws.in_working_copy();
@@ -1389,11 +1387,14 @@ impl Workspace {
                 // it now, while the working copy is still the open book.
                 window.refresh();
                 window.draw(cx).clear(cx);
+                this.update(cx, |ws, cx| {
+                    ws.store_layout(cx);
+                    ws.save_left_working_copy(close_after, cx);
+                })
+                .ok();
+                return false;
             }
             this.update(cx, |ws, cx| {
-                if leaving {
-                    ws.save_left_working_copy(cx);
-                }
                 ws.store_layout(cx);
                 true
             })
