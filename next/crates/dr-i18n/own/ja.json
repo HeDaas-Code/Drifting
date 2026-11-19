@@ -490,6 +490,18 @@
     "templateStructure": "テンプレートの構造",
     "unusedTemplates": "未使用のテンプレート"
   },
+  "background": {
+    "builtin": "内蔵の背景",
+    "solid": "単色",
+    "custom": "カスタム画像…",
+    "pickImage": "PNG、JPEG、WebP 画像を選択",
+    "useImage": "画像を使用",
+    "replace": "画像を置換…",
+    "blur": "すりガラスのぼかし",
+    "preparing": "画像を準備中…",
+    "failed": "画像を読み込めないか、処理できません。",
+    "missing": "保存された画像がありません。置換または削除してください。"
+  },
   "calendarEditor": {
     "title": "暦",
     "newCalendar": "新しい暦",

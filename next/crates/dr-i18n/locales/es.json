@@ -198,6 +198,18 @@
       "verifying": "Verificando…"
     }
   },
+  "background": {
+    "blur": "Desenfoque del cristal",
+    "builtin": "Fondo integrado",
+    "custom": "Imagen personalizada…",
+    "failed": "No se pudo leer o preparar esta imagen.",
+    "missing": "La imagen guardada no está disponible. Reemplázala o elimínala.",
+    "pickImage": "Elegir una imagen PNG, JPEG o WebP",
+    "preparing": "Preparando imagen…",
+    "replace": "Reemplazar imagen…",
+    "solid": "Color sólido",
+    "useImage": "Usar imagen"
+  },
   "bookVersions": {
     "assetsChanged": "Archivos de material modificados: {{count}}",
     "confirmDelete": "Confirmar eliminación",

@@ -196,6 +196,18 @@
       "verifying": "正在驗證…"
     }
   },
+  "background": {
+    "blur": "毛玻璃模糊強度",
+    "builtin": "內建背景",
+    "custom": "自訂圖片…",
+    "failed": "無法讀取或處理這張圖片。",
+    "missing": "已儲存的背景圖片無法使用，請替換或移除。",
+    "pickImage": "選擇 PNG、JPEG 或 WebP 圖片",
+    "preparing": "正在準備圖片…",
+    "replace": "替換圖片…",
+    "solid": "純色",
+    "useImage": "使用圖片"
+  },
   "bookVersions": {
     "assetsChanged": "有 {{count}} 個素材檔案變更",
     "confirmDelete": "確認刪除",

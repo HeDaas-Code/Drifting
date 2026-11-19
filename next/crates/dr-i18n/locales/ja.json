@@ -196,6 +196,18 @@
       "verifying": "検証中…"
     }
   },
+  "background": {
+    "blur": "すりガラスのぼかし",
+    "builtin": "内蔵の背景",
+    "custom": "カスタム画像…",
+    "failed": "画像を読み込めないか、処理できません。",
+    "missing": "保存された画像がありません。置換または削除してください。",
+    "pickImage": "PNG、JPEG、WebP 画像を選択",
+    "preparing": "画像を準備中…",
+    "replace": "画像を置換…",
+    "solid": "単色",
+    "useImage": "画像を使用"
+  },
   "bookVersions": {
     "assetsChanged": "素材ファイルの変更：{{count}}",
     "confirmDelete": "削除を確定",

@@ -196,6 +196,18 @@
       "verifying": "Verifying…"
     }
   },
+  "background": {
+    "blur": "Frost blur",
+    "builtin": "Built-in background",
+    "custom": "Custom image…",
+    "failed": "Could not read or prepare this image.",
+    "missing": "The saved image is unavailable. Choose a replacement or remove it.",
+    "pickImage": "Choose a PNG, JPEG or WebP image",
+    "preparing": "Preparing image…",
+    "replace": "Replace image…",
+    "solid": "Solid color",
+    "useImage": "Use image"
+  },
   "bookVersions": {
     "assetsChanged": "Asset files changed: {{count}}",
     "confirmDelete": "Confirm deletion",

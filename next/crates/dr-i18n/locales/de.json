@@ -196,6 +196,18 @@
       "verifying": "Wird geprüft…"
     }
   },
+  "background": {
+    "blur": "Milchglasunschärfe",
+    "builtin": "Integrierter Hintergrund",
+    "custom": "Eigenes Bild…",
+    "failed": "Dieses Bild konnte nicht gelesen oder verarbeitet werden.",
+    "missing": "Das gespeicherte Bild ist nicht verfügbar. Ersetze oder entferne es.",
+    "pickImage": "PNG-, JPEG- oder WebP-Bild auswählen",
+    "preparing": "Bild wird vorbereitet…",
+    "replace": "Bild ersetzen…",
+    "solid": "Einfarbig",
+    "useImage": "Bild verwenden"
+  },
   "bookVersions": {
     "assetsChanged": "Geänderte Materialdateien: {{count}}",
     "confirmDelete": "Löschen bestätigen",

@@ -198,6 +198,18 @@
       "verifying": "Vérification…"
     }
   },
+  "background": {
+    "blur": "Flou du verre dépoli",
+    "builtin": "Arrière-plan intégré",
+    "custom": "Image personnalisée…",
+    "failed": "Impossible de lire ou de préparer cette image.",
+    "missing": "L’image enregistrée n’est pas disponible. Remplacez-la ou supprimez-la.",
+    "pickImage": "Choisir une image PNG, JPEG ou WebP",
+    "preparing": "Préparation de l’image…",
+    "replace": "Remplacer l’image…",
+    "solid": "Couleur unie",
+    "useImage": "Utiliser l’image"
+  },
   "bookVersions": {
     "assetsChanged": "Fichiers de ressources modifiés : {{count}}",
     "confirmDelete": "Confirmer la suppression",

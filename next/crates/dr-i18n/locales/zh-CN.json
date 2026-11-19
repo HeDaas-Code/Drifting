@@ -194,6 +194,18 @@
       "verifying": "验证中…"
     }
   },
+  "background": {
+    "blur": "毛玻璃模糊强度",
+    "builtin": "内置背景",
+    "custom": "自定义图片…",
+    "failed": "无法读取或处理这张图片。",
+    "missing": "保存的背景图片已失效，请替换或移除。",
+    "pickImage": "选择 PNG、JPEG 或 WebP 图片",
+    "preparing": "正在准备图片…",
+    "replace": "替换图片…",
+    "solid": "纯色",
+    "useImage": "使用图片"
+  },
   "bookVersions": {
     "assetsChanged": "变化的素材文件 {{count}} 个",
     "confirmDelete": "确认删除",

@@ -1526,6 +1526,13 @@ pub(crate) fn coverage_v3(name: &str, args: &Value, output: &Value) -> Option<Ve
         }
         "project.get" => {
             read.insert("calendar:*".into());
+            if let Some(rows) = output["calendars"].as_array() {
+                for row in rows {
+                    if let Some(id) = row["id"].as_str() {
+                        read.insert(format!("calendar:{id}"));
+                    }
+                }
+            }
             if let Some(book) = args["book"].as_str() {
                 read.insert(format!("project:{book}"));
             }

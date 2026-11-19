@@ -124,6 +124,7 @@
 | M44 番茄钟 | 只在自动测试验过 | 工作区标题栏控制、设备本地恢复、作品本地唯一完成记录和统计读取已接入；待打包运行确认声音与真实休眠/关窗体验 | [pomodoro](modules/pomodoro.md) |
 | M45 整书版本 | 自动与 GPUI 组件测试通过 | 命名归档、前后版本摘要、恢复新作品、保留素材、取消及进程退出恢复已验证；Linux/Windows 安装包内验收待完成 | [book-versions](modules/book-versions.md) |
 | M46 自定义历法 | 自动与 GPUI 组件测试通过 | 多历法、规则编辑、连续日坐标、日期标尺/输入、同步及导出已验证；尚需安装包内原生交互验收 | [calendars](modules/calendars.md) |
+| M47 自定义背景与毛玻璃 | 自动图片处理测试通过 | 设置与半透明表面已接通；真实亮暗主题、降低动效、X11/Wayland 和 Windows 安装包视觉验收待做 | [backdrop](modules/backdrop.md) |
 
 ## 没在真实条件下验过的
 

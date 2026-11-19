@@ -2490,8 +2490,8 @@ name = "dr-view-sea"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "dirs",
  "dr-i18n",
+ "dr-platform",
  "dr-samples",
  "dr-shell",
  "dr-store",
@@ -2501,6 +2501,7 @@ dependencies = [
  "gpui_platform",
  "image",
  "log",
+ "serde",
  "serde_json",
  "smallvec",
  "tempfile",

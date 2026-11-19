@@ -488,6 +488,18 @@
     "templateStructure": "模板结构",
     "unusedTemplates": "未使用的模板"
   },
+  "background": {
+    "builtin": "内置背景",
+    "solid": "纯色",
+    "custom": "自定义图片…",
+    "pickImage": "选择 PNG、JPEG 或 WebP 图片",
+    "useImage": "使用图片",
+    "replace": "替换图片…",
+    "blur": "毛玻璃模糊强度",
+    "preparing": "正在准备图片…",
+    "failed": "无法读取或处理这张图片。",
+    "missing": "保存的背景图片已失效，请替换或移除。"
+  },
   "calendarEditor": {
     "title": "历法",
     "newCalendar": "新历法",

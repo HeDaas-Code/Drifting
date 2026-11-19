@@ -196,6 +196,18 @@
       "verifying": "검증 중…"
     }
   },
+  "background": {
+    "blur": "반투명 흐림 강도",
+    "builtin": "기본 배경",
+    "custom": "사용자 이미지…",
+    "failed": "이미지를 읽거나 처리할 수 없습니다.",
+    "missing": "저장된 이미지가 없습니다. 교체하거나 삭제하세요.",
+    "pickImage": "PNG, JPEG 또는 WebP 이미지 선택",
+    "preparing": "이미지 준비 중…",
+    "replace": "이미지 교체…",
+    "solid": "단색",
+    "useImage": "이미지 사용"
+  },
   "bookVersions": {
     "assetsChanged": "변경된 자료 파일 {{count}}개",
     "confirmDelete": "삭제 확인",

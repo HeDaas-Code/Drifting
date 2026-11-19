@@ -506,6 +506,18 @@
     "templateStructure": "Template structure",
     "unusedTemplates": "Unused templates"
   },
+  "background": {
+    "builtin": "Built-in background",
+    "solid": "Solid color",
+    "custom": "Custom image…",
+    "pickImage": "Choose a PNG, JPEG or WebP image",
+    "useImage": "Use image",
+    "replace": "Replace image…",
+    "blur": "Frost blur",
+    "preparing": "Preparing image…",
+    "failed": "Could not read or prepare this image.",
+    "missing": "The saved image is unavailable. Choose a replacement or remove it."
+  },
   "calendarEditor": {
     "title": "Calendars",
     "newCalendar": "New calendar",

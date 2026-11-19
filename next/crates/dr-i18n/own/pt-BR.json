@@ -508,6 +508,18 @@
     "templateStructure": "Estrutura dos modelos",
     "unusedTemplates": "Modelos não usados"
   },
+  "background": {
+    "builtin": "Plano de fundo integrado",
+    "solid": "Cor sólida",
+    "custom": "Imagem personalizada…",
+    "pickImage": "Escolher uma imagem PNG, JPEG ou WebP",
+    "useImage": "Usar imagem",
+    "replace": "Substituir imagem…",
+    "blur": "Desfoque do vidro",
+    "preparing": "Preparando imagem…",
+    "failed": "Não foi possível ler ou preparar esta imagem.",
+    "missing": "A imagem salva não está disponível. Substitua ou remova-a."
+  },
   "calendarEditor": {
     "title": "Calendários",
     "newCalendar": "Novo calendário",

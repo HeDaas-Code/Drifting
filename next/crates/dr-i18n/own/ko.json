@@ -490,6 +490,18 @@
     "templateStructure": "템플릿 구조",
     "unusedTemplates": "사용하지 않는 템플릿"
   },
+  "background": {
+    "builtin": "기본 배경",
+    "solid": "단색",
+    "custom": "사용자 이미지…",
+    "pickImage": "PNG, JPEG 또는 WebP 이미지 선택",
+    "useImage": "이미지 사용",
+    "replace": "이미지 교체…",
+    "blur": "반투명 흐림 강도",
+    "preparing": "이미지 준비 중…",
+    "failed": "이미지를 읽거나 처리할 수 없습니다.",
+    "missing": "저장된 이미지가 없습니다. 교체하거나 삭제하세요."
+  },
   "calendarEditor": {
     "title": "달력",
     "newCalendar": "새 달력",

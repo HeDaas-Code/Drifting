@@ -506,6 +506,18 @@
     "templateStructure": "Vorlagenstruktur",
     "unusedTemplates": "Unbenutzte Vorlagen"
   },
+  "background": {
+    "builtin": "Integrierter Hintergrund",
+    "solid": "Einfarbig",
+    "custom": "Eigenes Bild…",
+    "pickImage": "PNG-, JPEG- oder WebP-Bild auswählen",
+    "useImage": "Bild verwenden",
+    "replace": "Bild ersetzen…",
+    "blur": "Milchglasunschärfe",
+    "preparing": "Bild wird vorbereitet…",
+    "failed": "Dieses Bild konnte nicht gelesen oder verarbeitet werden.",
+    "missing": "Das gespeicherte Bild ist nicht verfügbar. Ersetze oder entferne es."
+  },
   "calendarEditor": {
     "title": "Kalender",
     "newCalendar": "Neuer Kalender",
