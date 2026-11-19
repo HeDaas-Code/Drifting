@@ -156,3 +156,5 @@ Windows x64 任务产生 NSIS 安装包，检查独立身份、随包字体、�
 锁文件、说明以及本地 Git 远端预留／重试演练；actionlint 验证工作流结构，
 Alpha 身份有 Rust 定向测试。Linux/Windows 云端构建、实际安装与 Wayland、
 中文麦克风和已登录外部 Agent 的验证属于独立验收，不能用脚本检查代替。
+
+Next 的 Linux CI 使用无调试符号的开发／测试构建并关闭增量缓存，避免完整 GPUI 工作区测试在 GitHub runner 上耗尽磁盘。2026-11-19 的运行 44461951803 中，Linux 格式和 Clippy 通过，测试阶段 runner 因磁盘满退出；这不是测试全通过的证据。
