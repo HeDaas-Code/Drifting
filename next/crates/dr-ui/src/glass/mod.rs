@@ -13,7 +13,7 @@ mod state;
 use std::cell::RefCell;
 
 use gpui::{
-    AnyElement, App, Bounds, ElementId, Entity, GlobalElementId, InspectorElementId,
+    AnyElement, App, Bounds, ElementId, Entity, Global, GlobalElementId, InspectorElementId,
     InteractiveElement, IntoElement, LayoutId, MouseButton, ParentElement, Pixels, Stateful,
     StatefulInteractiveElement, Styled, Window, canvas, div, prelude::FluentBuilder as _,
 };
@@ -80,6 +80,28 @@ impl Look {
             color,
             bleed_lift: 0.0,
         }
+    }
+}
+
+/// Custom wallpaper enables translucent surfaces without fading their contents.
+#[derive(Clone, Copy, Default)]
+pub struct FrostedSurfaces(pub bool);
+impl Global for FrostedSurfaces {}
+
+pub fn frosted(cx: &App) -> bool {
+    cx.try_global::<FrostedSurfaces>()
+        .is_some_and(|setting| setting.0)
+}
+
+pub fn overlay_color(color: Rgb, cx: &App) -> gpui::Hsla {
+    color.alpha(if frosted(cx) { 0.90 } else { 1.0 })
+}
+
+pub fn overlay_ground(color: Rgb, cx: &App) -> Ground {
+    if frosted(cx) {
+        Ground::Uneven
+    } else {
+        Ground::flat(color)
     }
 }
 

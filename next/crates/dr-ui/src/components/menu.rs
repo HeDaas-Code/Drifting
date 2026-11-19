@@ -21,7 +21,7 @@ use gpui::{
 
 use crate::{
     fonts::{Role, weight},
-    glass::{self, Ground, Kind, Mode, SLAB_ORIGIN, Spec, Tone},
+    glass::{self, Kind, Mode, SLAB_ORIGIN, Spec, Tone},
     sand::{self, Icon, KindMark},
     style::DrStyled,
     theme::Theme,
@@ -270,8 +270,17 @@ pub fn float_shadow(p: &Palette) -> Vec<BoxShadow> {
 pub fn slab_edge(p: &'static Palette, radius: f32) -> impl IntoElement {
     canvas(
         |_, _, _| (),
-        move |bounds, _, window, _| {
-            glass::paint_slab(bounds, radius, p.desk, p.dark, SLAB_ORIGIN, window);
+        move |bounds, _, window, cx| {
+            if glass::frosted(cx) {
+                window.paint_quad(
+                    gpui::fill(bounds, glass::overlay_color(p.desk, cx))
+                        .corner_radii(px(radius))
+                        .border_widths(px(0.5))
+                        .border_color(p.hairline()),
+                );
+            } else {
+                glass::paint_slab(bounds, radius, p.desk, p.dark, SLAB_ORIGIN, window);
+            }
         },
     )
     .absolute()
@@ -348,7 +357,7 @@ impl RenderOnce for Menu {
         let p = theme.palette;
         let w = self.width_px.unwrap_or(self.width.px());
         glass::surface(
-            Ground::flat(p.desk),
+            glass::overlay_ground(p.desk, cx),
             div()
                 .id(self.id)
                 .relative()

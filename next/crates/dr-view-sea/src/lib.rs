@@ -15,6 +15,7 @@
 //! docs/rust-rewrite/modules/m24-sea.md has the design, the numbers and how
 //! the shell and the shelf wire it.
 
+pub mod background;
 pub mod element;
 pub mod first_run;
 pub mod glass;

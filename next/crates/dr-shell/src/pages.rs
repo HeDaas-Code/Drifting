@@ -285,6 +285,8 @@ pub struct Backdrop {
     /// The sea is ebbing (its last hold let go): the workspace leaves its
     /// desk to it for those seconds.
     pub ebbing: AskWindow,
+    /// Author-selected wallpaper requests translucent foreground surfaces.
+    pub frosted: AskWindow,
     /// `el` lying on the sea as bare glass while it ebbs (the sidebars and
     /// the Bottom Panel).
     pub on_sea: WrapEl<SharedString>,
@@ -639,6 +641,12 @@ pub(crate) fn library_for(
 /// Registers the sea under every window (M24).
 pub fn set_backdrop(cx: &mut App, backdrop: Backdrop) {
     cx.default_global::<Pages>().backdrop = Some(backdrop);
+}
+
+pub(crate) fn frosted(window: &mut Window, cx: &mut App) -> bool {
+    cx.try_global::<Pages>()
+        .and_then(|pages| pages.backdrop.clone())
+        .is_some_and(|backdrop| (backdrop.frosted)(window, cx))
 }
 
 pub(crate) fn backdrop(cx: &App) -> Option<Backdrop> {

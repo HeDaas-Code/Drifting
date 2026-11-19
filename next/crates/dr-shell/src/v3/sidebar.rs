@@ -852,7 +852,7 @@ impl Sidebar {
                     .solid(),
                 )
                 .when(on, |el| {
-                    el.bg(p.page.solid())
+                    el.bg(dr_ui::glass::overlay_color(p.page, cx))
                         .border(px(0.5))
                         .border_color(p.hairline())
                 })
@@ -881,7 +881,7 @@ impl Sidebar {
                 .right(px(-6.0))
                 .size(px(16.0))
                 .rounded_full()
-                .bg(p.desk.solid())
+                .bg(dr_ui::glass::overlay_color(p.desk, cx))
                 .border(px(0.5))
                 .border_color(p.ink(1).alpha(0.28))
                 .flex()
