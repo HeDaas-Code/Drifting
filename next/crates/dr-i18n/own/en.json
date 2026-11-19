@@ -156,6 +156,7 @@
   },
   "settings": {
     "appearance": {
+      "backdrop": "Backdrop",
       "reduce_motion": "Turn off animations"
     },
     "editor": {
@@ -504,5 +505,20 @@
     "templateCount": "{{count}} templates",
     "templateStructure": "Template structure",
     "unusedTemplates": "Unused templates"
+  },
+  "pomodoro": {
+    "activeBook": "Book: {{book}}",
+    "end": "End",
+    "focus": "Focus",
+    "longBreak": "Long break",
+    "mute": "Mute",
+    "noSession": "No active writing session",
+    "pause": "Pause",
+    "resume": "Resume",
+    "shortBreak": "Short break",
+    "start": "Start",
+    "summary": "{{today}} today · {{total}} total · {{minutes}} min",
+    "title": "Pomodoro",
+    "unmute": "Sound on"
   }
 }

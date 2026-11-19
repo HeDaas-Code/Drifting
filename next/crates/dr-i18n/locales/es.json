@@ -618,6 +618,21 @@
     "rowPlaceholder": "Fila",
     "title": "Trama"
   },
+  "pomodoro": {
+    "activeBook": "Libro: {{book}}",
+    "end": "Finalizar",
+    "focus": "Concentración",
+    "longBreak": "Descanso largo",
+    "mute": "Silenciar",
+    "noSession": "No hay una sesión de escritura activa",
+    "pause": "Pausar",
+    "resume": "Continuar",
+    "shortBreak": "Descanso corto",
+    "start": "Iniciar",
+    "summary": "{{today}} hoy · {{total}} en total · {{minutes}} min",
+    "title": "Pomodoro",
+    "unmute": "Activar sonido"
+  },
   "positionLink": {
     "copied": "Enlace de posición copiado"
   },

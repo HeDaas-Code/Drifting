@@ -618,6 +618,21 @@
     "rowPlaceholder": "Ligne",
     "title": "Intrigue"
   },
+  "pomodoro": {
+    "activeBook": "Livre : {{book}}",
+    "end": "Terminer",
+    "focus": "Concentration",
+    "longBreak": "Pause longue",
+    "mute": "Couper le son",
+    "noSession": "Aucune session d’écriture active",
+    "pause": "Mettre en pause",
+    "resume": "Reprendre",
+    "shortBreak": "Pause courte",
+    "start": "Démarrer",
+    "summary": "{{today}} aujourd’hui · {{total}} au total · {{minutes}} min",
+    "title": "Pomodoro",
+    "unmute": "Activer le son"
+  },
   "positionLink": {
     "copied": "Lien de position copié"
   },

@@ -121,6 +121,7 @@
 | M41 导出与搬运 | 已验收 | EPUB / DOCX / PDF、`.driftingbook`、整库备份与恢复。Markdown 分享入口已随切换删除。PDF 的字体家族选择等编辑器的字体设置 | [m41](modules/m41-export.md) |
 | M42 自动更新 | 只在合成环境验过 | 对着本机假的发布源。旧版把更新交给新版的交接只写了设计，发布时由作者定 | [m42](modules/m42-update.md) |
 | M43 Windows | 只在合成环境验过 | 平台接口和打包脚本已有，**没在 Windows 实机上跑过**，而且 CI 上两个 Windows 任务现在是红的。托盘和字体回退链还没接进外壳 | [m43](modules/m43-windows.md) |
+| M44 番茄钟 | 只在自动测试验过 | 工作区标题栏控制、设备本地恢复、作品本地唯一完成记录和统计读取已接入；待打包运行确认声音与真实休眠/关窗体验 | [pomodoro](modules/pomodoro.md) |
 
 ## 没在真实条件下验过的
 

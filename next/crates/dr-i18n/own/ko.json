@@ -149,6 +149,7 @@
   },
   "settings": {
     "appearance": {
+      "backdrop": "배경",
       "reduce_motion": "애니메이션 끄기"
     },
     "editor": {
@@ -488,5 +489,20 @@
     "templateCount": "템플릿 {{count}}개",
     "templateStructure": "템플릿 구조",
     "unusedTemplates": "사용하지 않는 템플릿"
+  },
+  "pomodoro": {
+    "activeBook": "작품: {{book}}",
+    "end": "종료",
+    "focus": "집중",
+    "longBreak": "긴 휴식",
+    "mute": "음소거",
+    "noSession": "진행 중인 집필 타이머가 없습니다",
+    "pause": "일시 정지",
+    "resume": "계속",
+    "shortBreak": "짧은 휴식",
+    "start": "시작",
+    "summary": "오늘 {{today}}회 · 총 {{total}}회 · {{minutes}}분",
+    "title": "포모도로",
+    "unmute": "소리 켜기"
   }
 }

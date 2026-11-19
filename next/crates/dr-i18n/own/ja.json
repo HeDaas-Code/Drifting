@@ -149,6 +149,7 @@
   },
   "settings": {
     "appearance": {
+      "backdrop": "背景",
       "reduce_motion": "アニメーションをオフにする"
     },
     "editor": {
@@ -488,5 +489,20 @@
     "templateCount": "テンプレート {{count}} 件",
     "templateStructure": "テンプレートの構造",
     "unusedTemplates": "未使用のテンプレート"
+  },
+  "pomodoro": {
+    "activeBook": "作品：{{book}}",
+    "end": "終了",
+    "focus": "集中",
+    "longBreak": "長い休憩",
+    "mute": "ミュート",
+    "noSession": "執筆タイマーは停止中です",
+    "pause": "一時停止",
+    "resume": "再開",
+    "shortBreak": "短い休憩",
+    "start": "開始",
+    "summary": "今日 {{today}} 回 · 合計 {{total}} 回 · {{minutes}} 分",
+    "title": "ポモドーロ",
+    "unmute": "音をオン"
   }
 }

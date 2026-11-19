@@ -607,6 +607,21 @@
     "rowPlaceholder": "행",
     "title": "플롯"
   },
+  "pomodoro": {
+    "activeBook": "작품: {{book}}",
+    "end": "종료",
+    "focus": "집중",
+    "longBreak": "긴 휴식",
+    "mute": "음소거",
+    "noSession": "진행 중인 집필 타이머가 없습니다",
+    "pause": "일시 정지",
+    "resume": "계속",
+    "shortBreak": "짧은 휴식",
+    "start": "시작",
+    "summary": "오늘 {{today}}회 · 총 {{total}}회 · {{minutes}}분",
+    "title": "포모도로",
+    "unmute": "소리 켜기"
+  },
   "positionLink": {
     "copied": "위치 링크를 복사했습니다"
   },

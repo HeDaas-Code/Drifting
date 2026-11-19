@@ -34,6 +34,10 @@ const PINNED: &[(&str, Option<&str>)] = &[
         None,
     ),
     ("next/crates/dr-store/migrations/0008_local_book.sql", None),
+    (
+        "next/crates/dr-store/migrations/0009_pomodoro_sessions.sql",
+        None,
+    ),
 ];
 
 fn sha256(bytes: &[u8]) -> String {

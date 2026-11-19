@@ -147,6 +147,7 @@
   },
   "settings": {
     "appearance": {
+      "backdrop": "背景",
       "reduce_motion": "关闭动态效果"
     },
     "editor": {
@@ -486,5 +487,20 @@
     "templateCount": "{{count}} 个模板",
     "templateStructure": "模板结构",
     "unusedTemplates": "未使用的模板"
+  },
+  "pomodoro": {
+    "activeBook": "作品：{{book}}",
+    "end": "结束",
+    "focus": "专注",
+    "longBreak": "长休息",
+    "mute": "静音",
+    "noSession": "当前没有写作计时",
+    "pause": "暂停",
+    "resume": "继续",
+    "shortBreak": "短休息",
+    "start": "开始",
+    "summary": "今日 {{today}} 轮 · 共 {{total}} 轮 · {{minutes}} 分钟",
+    "title": "番茄钟",
+    "unmute": "开启声音"
   }
 }

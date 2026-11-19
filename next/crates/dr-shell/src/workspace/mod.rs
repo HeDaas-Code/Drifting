@@ -1942,6 +1942,9 @@ impl Render for Workspace {
                 el.child(sidebar::account_menu(self, window, cx))
             })
             .children(self.guide_layer(self.filled().is_some(), window, cx))
+            .when_some(chrome::pomodoro_panel(self, window, cx), |el, panel| {
+                el.child(panel)
+            })
             .children(crate::release::curtain(window, cx));
         let root = self.on_actions(root, cx);
         glass::surface(Ground::flat(p.desk), root).into_any_element()

@@ -10,7 +10,8 @@ use dr_doc::v3::CollectionV3 as Collection;
 use dr_model::DocId;
 use dr_model::id::BookId;
 use dr_store::{
-    DocHandle, Library, LibraryOptions, LibrarySubscription, OpenDoc, StoreError, StoreEvent,
+    DocHandle, Library, LibraryOptions, LibrarySubscription, OpenDoc, PomodoroCompletion,
+    PomodoroSummary, StoreError, StoreEvent,
 };
 use serde_json::Value;
 
@@ -327,6 +328,16 @@ impl Workspace {
 
     pub fn library(&self) -> &Library {
         &self.inner.lib
+    }
+
+    /// Persist one completed focus round in this device's local library data.
+    pub fn record_pomodoro(&self, record: &PomodoroCompletion) -> Result<bool> {
+        Ok(self.inner.lib.record_pomodoro(record)?)
+    }
+
+    /// The focus-session totals shown with this book's writing statistics.
+    pub fn pomodoro_summary(&self, book: &str, day: &str) -> Result<PomodoroSummary> {
+        Ok(self.inner.lib.pomodoro_summary(book, day)?)
     }
 
     /// This device's writing-day key (`writing_day.record`), when the

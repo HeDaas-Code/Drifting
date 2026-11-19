@@ -607,6 +607,21 @@
     "rowPlaceholder": "列",
     "title": "情節"
   },
+  "pomodoro": {
+    "activeBook": "作品：{{book}}",
+    "end": "結束",
+    "focus": "專注",
+    "longBreak": "長休息",
+    "mute": "靜音",
+    "noSession": "目前沒有寫作計時",
+    "pause": "暫停",
+    "resume": "繼續",
+    "shortBreak": "短休息",
+    "start": "開始",
+    "summary": "今日 {{today}} 輪 · 共 {{total}} 輪 · {{minutes}} 分鐘",
+    "title": "番茄鐘",
+    "unmute": "開啟聲音"
+  },
   "positionLink": {
     "copied": "已複製位置連結"
   },

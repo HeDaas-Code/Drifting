@@ -1,4 +1,4 @@
-# 功能模块 M01–M43
+# 功能模块 M01–M44
 
 > 这一页是 2026-11-07 的**原始模块清单**：每个模块作者能做什么、要对照的旧代码在哪。对照旧版功能时仍然用它；每个模块现在到哪一步见 [progress.md](progress.md)，结论在 `modules/` 下。
 >
@@ -110,6 +110,7 @@ F3 的命令注册表一好就能开，不必等阶段 3。
 | M41 | 导出与搬运 | EPUB / DOCX / PDF 原稿导出；Markdown 分享；`.driftingbook` v2；整库备份；导入 docx 和 Markdown | Rust 原样复用 `src-tauri/src/manuscript_export/*` 约 4.8k（PDF 排版用 krilla、rustybuzz；DOCX、EPUB 只用 zip 手写，不需要 docx-rs、epub-builder 或 typst），只新写「Loro → `Manuscript`」的转换、`library_backup.rs` 709；TS 的 `services/export`、`services/book-transfer`、`components/modals/ImportDialog.tsx` 449 | F3、dr-text | M |
 | M42 | 自动更新与旧版交接 | 检查更新（启动时检查，之后每 3 小时一次），一键安装；最后一个 Tauri 版本把更新交给 GPUI 版本 | `src-tauri/src/app_update.rs` 214、`services/update/*`、`.github/workflows/release.yml` | F7 | M |
 | M43 | Windows 版 | 双架构的 NSIS 安装包；深链接注册；输入法验收（微软拼音）；字体回退 | `docs/windows.md`、`.github/workflows/windows.yml` | F7 | M |
+| M44 | 写作番茄钟 | 作品绑定、休眠/重启恢复、四轮长休息、可调时长、静音与统计记录 | [pomodoro](modules/pomodoro.md) | F6、M07 | M |
 
 ## 不在本计划里的
 

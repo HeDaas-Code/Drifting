@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use dr_doc::v3::BorrowedBookV3;
 use dr_model::{Day, DocId, id::BookId, v3 as m};
 use dr_store::OpenDoc;
+use dr_store::PomodoroSummary;
 use dr_text::{ProseShape, TextMetrics};
 use dr_workspace::commands::stats::{WritingDays, WritingDaysIn, WritingDaysOut};
 use dr_workspace::{Actor, Result, Workspace, WsError};
@@ -46,6 +47,7 @@ pub struct Loaded {
     /// Read from the selected prose, independent of index lag.
     pub shape: Option<ProseShape>,
     pub days: WritingDaysOut,
+    pub pomodoro: PomodoroSummary,
 }
 
 impl Loaded {
@@ -265,6 +267,11 @@ pub fn load_at(ws: &Workspace, book: &str, scope: Scope, today: &Day) -> Result<
             daily_word_target: None,
         }
     };
+    let pomodoro = if has_book && matches!(&scope, Scope::Book) {
+        ws.pomodoro_summary(book, today.as_str())?
+    } else {
+        PomodoroSummary::default()
+    };
     Ok(Loaded {
         scope,
         has_book,
@@ -277,5 +284,6 @@ pub fn load_at(ws: &Workspace, book: &str, scope: Scope, today: &Day) -> Result<
         daily_word_target: has_book.then(|| project.daily_word_target()).flatten(),
         shape,
         days,
+        pomodoro,
     })
 }

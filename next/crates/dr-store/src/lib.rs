@@ -59,6 +59,7 @@ pub mod local_state;
 pub mod machine;
 pub mod migrate;
 mod origin;
+pub mod pomodoro;
 pub mod purge;
 pub mod versions;
 
@@ -77,6 +78,7 @@ pub use library::{
 pub use local_book::LocalBook;
 pub use migrate::{Durability, MIGRATIONS, Migration, MigrationStage, OpenReport};
 pub use origin::{AGENT_PREFIX, COMMAND_ORIGIN, Origin};
+pub use pomodoro::{PomodoroCompletion, PomodoroSummary};
 
 /// Unix time in milliseconds.
 pub fn now_ms() -> i64 {

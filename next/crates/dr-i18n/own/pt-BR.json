@@ -158,6 +158,7 @@
   },
   "settings": {
     "appearance": {
+      "backdrop": "Plano de fundo",
       "reduce_motion": "Desativar animações"
     },
     "editor": {
@@ -506,5 +507,20 @@
     "templateCount": "{{count}} modelos",
     "templateStructure": "Estrutura dos modelos",
     "unusedTemplates": "Modelos não usados"
+  },
+  "pomodoro": {
+    "activeBook": "Livro: {{book}}",
+    "end": "Encerrar",
+    "focus": "Foco",
+    "longBreak": "Pausa longa",
+    "mute": "Silenciar",
+    "noSession": "Nenhuma sessão de escrita ativa",
+    "pause": "Pausar",
+    "resume": "Continuar",
+    "shortBreak": "Pausa curta",
+    "start": "Iniciar",
+    "summary": "{{today}} hoje · {{total}} no total · {{minutes}} min",
+    "title": "Pomodoro",
+    "unmute": "Ativar som"
   }
 }

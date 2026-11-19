@@ -614,6 +614,21 @@
     "rowPlaceholder": "Zeile",
     "title": "Handlung"
   },
+  "pomodoro": {
+    "activeBook": "Buch: {{book}}",
+    "end": "Beenden",
+    "focus": "Fokus",
+    "longBreak": "Lange Pause",
+    "mute": "Stummschalten",
+    "noSession": "Keine aktive Schreibsitzung",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "shortBreak": "Kurze Pause",
+    "start": "Starten",
+    "summary": "{{today}} heute · {{total}} insgesamt · {{minutes}} Min.",
+    "title": "Pomodoro",
+    "unmute": "Ton einschalten"
+  },
   "positionLink": {
     "copied": "Positionslink kopiert"
   },

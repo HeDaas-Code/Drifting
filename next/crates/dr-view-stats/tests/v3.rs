@@ -86,6 +86,27 @@ fn manuscript_uses_residence_and_live_prose_once_per_module() {
 }
 
 #[test]
+fn book_stats_include_local_pomodoro_completions() {
+    let (_dir, ws, book) = fixture();
+    let today = dr_view_stats::clock::today().to_string();
+    let completion = dr_store::PomodoroCompletion {
+        id: "session:focus:1".into(),
+        book_id: book.clone(),
+        local_day: today,
+        started_ms: 1_000,
+        completed_ms: 1_501_000,
+        focus_minutes: 25,
+    };
+    assert!(ws.record_pomodoro(&completion).unwrap());
+    assert!(!ws.record_pomodoro(&completion).unwrap());
+    let loaded = v3::load(&ws, &book, Scope::Book).unwrap();
+    assert_eq!(loaded.pomodoro.today_sessions, 1);
+    assert_eq!(loaded.pomodoro.total_sessions, 1);
+    assert_eq!(loaded.pomodoro.total_focus_minutes, 25);
+    ws.shutdown().unwrap();
+}
+
+#[test]
 fn material_and_nonmanuscript_entry_never_fall_back_to_whole_book() {
     let (_dir, ws, book) = fixture();
     let entries = call(&ws, "entry.list", json!({"book":book,"all":true}));
