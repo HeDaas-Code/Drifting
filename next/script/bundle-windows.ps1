@@ -23,12 +23,14 @@ param(
   [string]$BuildProfile = 'release',
   [string]$Target = '',
   [string]$Output = '',
+  [switch]$NextAlpha,
   [switch]$SkipBuild
 )
 $ErrorActionPreference = 'Stop'
 
 $next = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $Output) { $Output = Join-Path $next 'target\bundle' }
+$Output = [System.IO.Path]::GetFullPath($Output)
 New-Item -ItemType Directory -Force -Path $Output | Out-Null
 
 $manifest = Get-Content (Join-Path $next 'app\drifting\Cargo.toml')
@@ -42,6 +44,7 @@ if (-not $SkipBuild) {
   if ($BuildProfile -eq 'release') { $cargo += '--release' }
   if ($BuildProfile -eq 'dist') { $cargo += @('--profile', 'dist') }
   if ($Target) { $cargo += @('--target', $Target) }
+  if ($NextAlpha) { $cargo += @('--features', 'next-alpha') }
   Push-Location $next
   try { & cargo @cargo; if ($LASTEXITCODE -ne 0) { throw 'cargo build failed' } } finally { Pop-Location }
 }
@@ -85,6 +88,9 @@ $nsisArgs = @(
 )
 if ($hasAllFonts) {
   $nsisArgs += "/DFONTS_DIR=$fontsDir"
+}
+if ($NextAlpha) {
+  $nsisArgs += @('/DPRODUCT_NAME=Drifting Next Alpha', '/DBUNDLE_ID=cc.drifting.next.alpha', '/DURL_SCHEME=drifting-next-alpha')
 }
 $nsisArgs += (Join-Path $PSScriptRoot 'windows\drifting.nsi')
 & $makensis @nsisArgs

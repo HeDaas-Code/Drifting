@@ -8,6 +8,8 @@ publish.workspace = true
 description = "Drifting's platform services: logs, crash reports, keychain, deep links and single instance, updates, feedback"
 
 [features]
+# Independent manual-release channel; never adopts the Tauri identity.
+next-alpha = []
 default = ["network"]
 # Sentry's transport and the updater's HTTP client. Off, everything else still
 # builds, which lets `cargo check --target x86_64-pc-windows-msvc` run on a Mac

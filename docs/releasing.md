@@ -121,3 +121,38 @@ release 默认会剥离调试信息，而 Xcode 27 的工具链剥离后的过�
 （报 `mis-aligned LINKEDIT string pool` 或 `can't find crate`），正式构建在编译 App
 之前就会失败。构建脚本和过程宏只在构建机上运行，不剥离它们不影响发出去的 App，App
 本身仍会剥离。
+
+## Next Alpha 手动发布（独立通道）
+
+Next 使用独立的 **Next Release** 工作流（`.github/workflows/release-next.yml`），
+不走上面的 Tauri 发布、签名和自动更新通道。维护者选择源分支，手动点击
+**Run workflow**。准备任务串行预留 `0.2.0-alpha.N`：首次为 `alpha.1`；
+重试同一源码复用 `next-release/<版本>` 分支与发布提交，已发布的同一源码
+不再分配新号。预留分支保留用于审计，不要改写或删除。
+
+准备任务在源提交之上生成一个只修改 Next 对外版本包及 `next/Cargo.lock`
+的发布提交。Linux 和 Windows 都检出这一提交，运行格式、Clippy、工作区测试、
+`cargo xtask check`，再以 `next-alpha` 特性构建。原有 macOS 和 Windows ARM
+日常回归检查仍由 `next.yml` 保留。
+
+安装身份是 `cc.drifting.next.alpha`，产品名 **Drifting Next Alpha**，
+数据、系统凭据和协议 `drifting-next-alpha:` 与 Tauri 及开发构建分离。
+默认开发构建仍是 `cc.drifting.next.dev`。Alpha 不生成 Tauri 的 `latest.json`，
+也不使用其正式自动更新通道。
+
+Linux 任务产生 x86_64 AppImage 和 DEB。DEB 独立安装到
+`/opt/drifting-next-alpha`，命令是 `drifting-next-alpha`，不会占用旧客户端
+的可执行路径。当前运行库基线是 Ubuntu 24.04。AppImage 用校验 SHA-256 后的
+linuxdeploy 打包。两种包都要在临时 X11 会话里出现可见窗口后才能上传。
+Windows x64 任务产生 NSIS 安装包，检查独立身份、随包字体、窗口启动、关窗和卸载。
+
+所有验证和平台打包任务成功后才创建或刷新 **draft + prerelease** 的 Release，
+上传三种安装包和 `SHA256SUMS.txt`。说明从开发基线 `c17f32bbc`（首次）或
+上一已发布的 `next-v0.2.0-alpha.N` 标签开始，按功能汇总标题、短 SHA 和准确
+比较范围，并列出源码提交与发布提交。维护者核对草稿与人工验收记录后自行点击
+**Publish release**；工作流不会代为发布。
+
+本地验收：`python3 -m unittest discover -s next/script/tests -v` 验证编号、
+锁文件、说明以及本地 Git 远端预留／重试演练；actionlint 验证工作流结构，
+Alpha 身份有 Rust 定向测试。Linux/Windows 云端构建、实际安装与 Wayland、
+中文麦克风和已登录外部 Agent 的验证属于独立验收，不能用脚本检查代替。
