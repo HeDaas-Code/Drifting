@@ -1976,6 +1976,7 @@ dependencies = [
  "chrono",
  "cpal",
  "dirs",
+ "dr-testkit",
  "flate2",
  "keyring",
  "log",

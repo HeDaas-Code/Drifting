@@ -117,3 +117,66 @@ fn calendar_edit_undo_and_stale_draft_preserve_other_calendars() {
     assert!(list.contains(&original));
     assert!(list.contains(&other));
 }
+
+#[test]
+fn restoring_a_view_selection_preserves_positions_and_refuses_a_stale_expected_value() {
+    let env = env();
+    let book = env.out(
+        "project.create",
+        json!({"name":"Synthetic view selection undo"}),
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    env.call(
+        "calendar.put",
+        json!({"book":book,"calendar":CalendarSpec::simple("dawn".into(),"Dawn".into())}),
+    );
+    env.call("timeline_view.put", json!({"book":book,"view":{"id":"view-restore","name":"Timeline","pins":[{"id":"fixed-pin","label":"Synthetic event","at":-7.25}]}}));
+    let mapping = Calibration {
+        coordinate: -7.25,
+        day: -400,
+        days_per_unit: 3.,
+    };
+    env.call(
+        "timeline_view.calendar",
+        json!({"book":book,"view":"view-restore","calendar":"dawn","calibration":mapping}),
+    );
+    let selected = json!({"calendar":"dawn","calibration":mapping});
+    let numeric = json!({"calendar":null,"calibration":mapping});
+    let view = |rows: serde_json::Value| {
+        rows.as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == "view-restore")
+            .unwrap()
+            .clone()
+    };
+    let before = view(env.out("timeline_view.list", json!({"book":book})));
+    env.call(
+        "timeline_view.restore_calendar",
+        json!({"book":book,"view":"view-restore","expected":selected,"value":numeric}),
+    );
+    let restored = view(env.out("timeline_view.list", json!({"book":book})));
+    assert!(restored["calendar_id"].is_null());
+    assert_eq!(restored["calendar_calibration"], json!(mapping));
+    assert_eq!(restored["pins"], before["pins"]);
+    let version = env.ws().observe(&format!("book:{book}")).unwrap().version;
+    assert!(
+        env.ws()
+            .call(
+                &Actor::User,
+                "timeline_view.restore_calendar",
+                json!({"book":book,"view":"view-restore","expected":selected,"value":numeric})
+            )
+            .is_err()
+    );
+    assert_eq!(
+        env.ws().observe(&format!("book:{book}")).unwrap().version,
+        version
+    );
+    env.ws().undo(&Actor::User).unwrap().unwrap();
+    let undone = view(env.out("timeline_view.list", json!({"book":book})));
+    assert_eq!(undone["calendar_id"], "dawn");
+    assert_eq!(undone["pins"], before["pins"]);
+}

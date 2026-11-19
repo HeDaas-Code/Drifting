@@ -143,8 +143,8 @@ mod tests {
         assert!(hit(&["shadow", "_job"].concat()));
         assert!(hit(&["R2", "_BUCKET"].concat()));
         assert!(hit(&["byok.", "dashscope"].concat()));
-        assert!(hit(&["cp", "al = \"0.18.2\""].concat()));
-        assert!(hit(&["NSMicrophone", "UsageDescription"].concat()));
+        assert!(!hit(&["cp", "al"].concat()));
+        assert!(!hit(&["NSMicrophone", "UsageDescription"].concat()));
         for ok in [
             "shadow migration",
             "box-shadow",

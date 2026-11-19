@@ -539,9 +539,7 @@
     "add": "追加",
     "jumpDate": "日付に移動",
     "setDate": "日付を設定",
-    "fitTimeline": "すべてのイベント",
-    "currentDate": "Date details",
-    "saveFirst": "Save the calendar before using it."
+    "fitTimeline": "すべてのイベント"
   },
   "bookVersions": {
     "title": "バージョン",

@@ -123,7 +123,7 @@ mod tests {
         let out = dir.path().join("opened");
         let script = HELPER_SCRIPT.replace(
             "exec /usr/bin/open \"$@\"",
-            &format!("echo \"$@\" > '{}'", out.display()),
+            &format!("printf '%s\\n' \"$*\" > '{}'", out.display()),
         );
         let mut waited = std::process::Command::new("/bin/sleep")
             .arg("0.3")

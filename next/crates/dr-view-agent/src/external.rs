@@ -13,7 +13,7 @@ use dr_ui::{
 use gpui::{prelude::*, *};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Saved {
@@ -39,7 +39,9 @@ pub struct ExternalPanel {
     running: bool,
     turn: Option<String>,
     serial: u64,
-    request: Option<Value>,
+    requests: VecDeque<Value>,
+    prompt_id: Option<u64>,
+    stop_requested: bool,
     input: Entity<TextArea>,
     answer: Entity<TextArea>,
     dictation: Entity<Dictation>,
@@ -115,7 +117,9 @@ impl ExternalPanel {
             running: false,
             turn: None,
             serial: 10,
-            request: None,
+            requests: VecDeque::new(),
+            prompt_id: None,
+            stop_requested: false,
             input,
             answer,
             dictation,
@@ -145,12 +149,16 @@ impl ExternalPanel {
         self.save(cx);
     }
     pub fn disconnect(&mut self, cx: &mut Context<Self>) {
+        self.save(cx);
         self.generation += 1;
         self.process = None;
+        self.pending_open = None;
+        self.prompt_id = None;
+        self.stop_requested = false;
         self.ready = false;
         self.running = false;
         self.opening = false;
-        self.request = None;
+        self.requests.clear();
         self.turn = None;
         self.dictation.update(cx, |view, cx| view.reset(cx));
         if let Some((store, id)) = self.grant.take() {
@@ -276,10 +284,8 @@ impl ExternalPanel {
             changed = true;
             match event {
                 Err(error) => {
+                    self.disconnect(cx);
                     self.status = error;
-                    self.process = None;
-                    self.ready = false;
-                    self.running = false;
                     break;
                 }
                 Ok(message) => self.message(message, cx),
@@ -319,7 +325,7 @@ impl ExternalPanel {
             }
             return;
         }
-        if message["id"] == 2 {
+        if message["id"] == 2 && message.get("result").is_some() {
             if let Some(id) = self.wire.session_id(&message) {
                 self.saved.remote = Some(id);
                 self.ready = true;
@@ -329,7 +335,7 @@ impl ExternalPanel {
             return;
         }
         if message.get("id").is_some() && message.get("method").is_some() {
-            self.request = Some(message);
+            self.requests.push_back(message);
             self.status = "Platform requests input / 平台请求输入".into();
             return;
         }
@@ -337,6 +343,10 @@ impl ExternalPanel {
         let params = &message["params"];
         if let Some(turn) = params.pointer("/turn/id").and_then(Value::as_str) {
             self.turn = Some(turn.to_owned());
+            if self.stop_requested {
+                self.stop_requested = false;
+                self.stop(cx);
+            }
         }
         if method == "item/agentMessage/delta" {
             self.append_delta(params["delta"].as_str().unwrap_or_default(), cx);
@@ -362,17 +372,41 @@ impl ExternalPanel {
                 method
             );
         }
-        if method == "turn/completed"
-            || (self.wire.platform == ExternalPlatform::DeepseekHarness
-                && message.get("result").is_some()
-                && message["id"].as_u64().is_some_and(|id| id >= 10))
-        {
+        if let Some(result) = self.wire.completion(&message, self.prompt_id) {
             self.running = false;
             self.turn = None;
-            self.status = "Ready / 已连接".into();
+            self.prompt_id = None;
+            self.stop_requested = false;
+            self.status = match result {
+                Ok(()) => "Ready / 已连接".into(),
+                Err(error) => format!("Platform stopped / 平台已停止: {error}"),
+            };
             self.save(cx);
         }
     }
+    fn stop(&mut self, cx: &mut Context<Self>) {
+        let Some(session) = self.saved.remote.as_deref() else {
+            return;
+        };
+        if self.wire.platform == ExternalPlatform::Codex && self.turn.is_none() {
+            self.stop_requested = true;
+            self.status = "Stopping / 正在停止".into();
+            cx.notify();
+            return;
+        }
+        match self
+            .wire
+            .cancel(self.serial + 1, session, self.turn.as_deref())
+        {
+            Ok(value) => {
+                self.serial += 1;
+                self.send_rpc(value);
+            }
+            Err(error) => self.status = error.to_string(),
+        }
+        cx.notify();
+    }
+
     fn append_delta(&mut self, text: &str, cx: &mut App) {
         if let Some(last) = self.saved.messages.last_mut()
             && last.starts_with("Assistant / 助手: ")
@@ -399,12 +433,13 @@ impl ExternalPanel {
             self.remember(format!("You / 你: {text}"), cx);
             self.input.update(cx, |field, cx| field.set_text("", cx));
             self.running = true;
+            self.prompt_id = Some(self.serial);
             self.status = "Running / 运行中".into();
         }
         cx.notify();
     }
     fn respond(&mut self, value: Value, cx: &mut Context<Self>) {
-        if let Some(request) = self.request.take() {
+        if let Some(request) = self.requests.pop_front() {
             self.send_rpc(json!({"jsonrpc":"2.0","id":request["id"],"result":value}));
         }
         cx.notify();
@@ -421,7 +456,7 @@ impl Render for ExternalPanel {
                     .child(dr_ui::text::wrapped(text.clone())),
             );
         }
-        let request = self.request.clone();
+        let request = self.requests.front().cloned();
         div()
             .size_full()
             .flex()
@@ -497,6 +532,41 @@ impl Render for ExternalPanel {
                             );
                         }
                     }
+                } else if request["method"] == "mcpServer/elicitation/request" {
+                    for (label, action) in
+                        [("Decline / 拒绝", "decline"), ("Cancel / 取消", "cancel")]
+                    {
+                        options = options.child(Button::new(action, label).small().on_click(
+                            cx.listener(move |this, _, _, cx| {
+                                this.respond(json!({"action":action}), cx)
+                            }),
+                        ));
+                    }
+                    if request["params"]["mode"] == "form"
+                        && request["params"]["requestedSchema"]["properties"]
+                            .as_object()
+                            .is_none_or(|fields| fields.is_empty())
+                    {
+                        options = options.child(
+                            Button::new("elicitation-accept", "Allow once / 允许一次")
+                                .small()
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.respond(json!({"action":"accept","content":{}}), cx)
+                                })),
+                        );
+                    }
+                    if request["params"]["mode"] == "url"
+                        && let Some(url) = request["params"]["url"]
+                            .as_str()
+                            .filter(|url| url.starts_with("https://") || url.starts_with("http://"))
+                    {
+                        let url = url.to_owned();
+                        options = options.child(
+                            Button::new("elicitation-open", "Open authorization / 打开授权页")
+                                .small()
+                                .on_click(move |_, _, cx| cx.open_url(&url)),
+                        );
+                    }
                 } else if request["method"]
                     .as_str()
                     .is_some_and(|method| method.ends_with("requestApproval"))
@@ -546,24 +616,75 @@ impl Render for ExternalPanel {
                 .disabled(!self.ready)
                 .on_click(cx.listener(|this, _, _, cx| {
                     if this.running {
-                        if let Some(session) = this.saved.remote.as_deref() {
-                            match this
-                                .wire
-                                .cancel(this.serial + 1, session, this.turn.as_deref())
-                            {
-                                Ok(value) => {
-                                    this.serial += 1;
-                                    this.send_rpc(value);
-                                }
-                                Err(error) => {
-                                    this.status = error.to_string();
-                                }
-                            }
-                        }
+                        this.stop(cx);
                     } else {
                         this.send(cx);
                     }
                 })),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::prelude::v1::test;
+
+    #[gpui::test]
+    fn queued_approvals_and_partial_output_survive_the_correct_session_boundaries(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(|cx| {
+            dr_shell::init(
+                dr_shell::ShellInfo {
+                    app_name: "Drifting Next",
+                    bundle_id: "cc.drifting.next.dev",
+                    version: "0.2.0-dev",
+                    url_scheme: "drifting-next-dev",
+                    forced_appearance: None,
+                },
+                dr_shell::Services::default(),
+                dr_shell::SettingsFile::in_memory(),
+                cx,
+            );
+        });
+        let (panel, cx) = cx.add_window_view(|window, cx| {
+            ExternalPanel::new("synthetic-book".into(), ExternalPlatform::Codex, window, cx)
+        });
+        panel.update(cx, |panel, cx| {
+            panel.message(json!({"id":2,"result":{"thread":{"id":"synthetic-thread"}}}), cx);
+            panel.running = true;
+            panel.prompt_id = Some(11);
+            panel.remember("You / 你: synthetic prompt".into(), cx);
+            for text in ["synthetic ", "stream"] {
+                panel.message(json!({"method":"item/agentMessage/delta","params":{"delta":text}}), cx);
+            }
+            // Server request ids are in its own namespace; id 2 is not the
+            // response to our session-open when it carries a method.
+            for id in [2, 99] {
+                panel.message(json!({"id":id,"method":"item/commandExecution/requestApproval","params":{}}), cx);
+            }
+            assert_eq!(panel.requests.len(), 2);
+            assert_eq!(panel.requests[0]["id"], 2);
+            panel.message(json!({"method":"turn/completed","params":{"turn":{"id":"t","status":"interrupted"}}}), cx);
+            assert!(!panel.running);
+            assert!(panel.status.contains("interrupted"));
+            panel.disconnect(cx);
+            assert!(panel.requests.is_empty());
+            assert!(!panel.ready);
+            let records: Vec<Saved> = serde_json::from_value(Settings::device_memory(cx, SAVED).unwrap()).unwrap();
+            assert_eq!(records[0].messages.last().unwrap(), "Assistant / 助手: synthetic stream");
+            assert_eq!(records[0].remote.as_deref(), Some("synthetic-thread"));
+        });
+        let (other, cx) = cx.add_window_view(|window, cx| {
+            ExternalPanel::new(
+                "another-synthetic-book".into(),
+                ExternalPlatform::Codex,
+                window,
+                cx,
+            )
+        });
+        assert!(other.read_with(cx, |panel, _| panel.saved.remote.is_none()
+            && panel.saved.messages.is_empty()));
     }
 }

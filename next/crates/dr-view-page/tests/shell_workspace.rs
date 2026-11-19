@@ -276,7 +276,7 @@ fn keys(cx: &mut VisualTestContext, strokes: &str) {
     let strokes = if cfg!(target_os = "macos") {
         strokes.to_owned()
     } else {
-        strokes.replace("cmd-", "ctrl-")
+        strokes.replace("secondary-", "ctrl-")
     };
     cx.simulate_keystrokes(&strokes);
 }
@@ -295,33 +295,33 @@ fn shortcuts_go_back_and_forward_through_the_keymap(cx: &mut TestAppContext) {
         ws.open(chapter(1), Open::KEEP, cx);
         ws.open(chapter(2), Open::KEEP, cx);
     });
-    keys(cx, "cmd-[");
+    keys(cx, "secondary-[");
     assert_eq!(
         view.read_with(cx, |ws, _| ws.nav.page()),
         Page::Target(chapter(1))
     );
-    keys(cx, "cmd-]");
+    keys(cx, "secondary-]");
     assert_eq!(
         view.read_with(cx, |ws, _| ws.nav.page()),
         Page::Target(chapter(2))
     );
     // ⌘⌥← and ⇧⌘[ both go to the previous tab; ⌘W closes it.
-    keys(cx, "cmd-alt-left");
+    keys(cx, "secondary-alt-left");
     assert_eq!(
         view.read_with(cx, |ws, _| ws.nav.page()),
         Page::Target(chapter(1))
     );
-    keys(cx, "cmd-shift-]");
+    keys(cx, "secondary-shift-]");
     assert_eq!(
         view.read_with(cx, |ws, _| ws.nav.page()),
         Page::Target(chapter(2))
     );
-    keys(cx, "cmd-w");
+    keys(cx, "secondary-w");
     assert_eq!(view.read_with(cx, |ws, _| ws.nav.tabs().len()), 1);
     // ⌘N goes home; retired ⌘⌥2 no longer opens a singleton whole-book page.
-    keys(cx, "cmd-n");
+    keys(cx, "secondary-n");
     assert_eq!(view.read_with(cx, |ws, _| ws.nav.page()), Page::Home);
-    keys(cx, "cmd-alt-2");
+    keys(cx, "secondary-alt-2");
     assert_eq!(view.read_with(cx, |ws, _| ws.nav.page()), Page::Home);
 }
 
@@ -356,7 +356,7 @@ fn escape_closes_one_layer_at_a_time(cx: &mut TestAppContext) {
     view.update_in(cx, |ws, window, cx| {
         ws.enter_fill(FillPlace::Bottom, window, cx)
     });
-    keys(cx, "cmd-[");
+    keys(cx, "secondary-[");
     assert_eq!(
         view.read_with(cx, |ws, _| (ws.filled(), ws.nav.page())),
         (None, Page::Target(chapter(1)))
@@ -377,13 +377,13 @@ fn a_rebound_shortcut_takes_effect_at_once_and_is_stored(cx: &mut TestAppContext
         let overrides = Settings::read(cx).key_bindings();
         dr_shell::keymap::apply(&overrides, cx);
     });
-    keys(cx, "cmd-[");
+    keys(cx, "secondary-[");
     assert_eq!(
         view.read_with(cx, |ws, _| ws.nav.page()),
         Page::Target(chapter(2)),
         "the old key no longer goes back"
     );
-    keys(cx, "cmd-alt-b");
+    keys(cx, "secondary-alt-b");
     assert_eq!(
         view.read_with(cx, |ws, _| ws.nav.page()),
         Page::Target(chapter(1))
@@ -394,7 +394,11 @@ fn a_rebound_shortcut_takes_effect_at_once_and_is_stored(cx: &mut TestAppContext
     cx.update(|_, cx| {
         dr_shell::keymap::add_bindings(cx, || {
             vec![gpui::KeyBinding::new(
-                "cmd-alt-y",
+                if cfg!(target_os = "macos") {
+                    "cmd-alt-y"
+                } else {
+                    "ctrl-alt-y"
+                },
                 dr_shell::actions::ShowProjectHome,
                 Some("Workspace"),
             )]
@@ -402,7 +406,7 @@ fn a_rebound_shortcut_takes_effect_at_once_and_is_stored(cx: &mut TestAppContext
         let overrides = Settings::read(cx).key_bindings();
         dr_shell::keymap::apply(&overrides, cx);
     });
-    keys(cx, "cmd-alt-y");
+    keys(cx, "secondary-alt-y");
     assert_eq!(view.read_with(cx, |ws, _| ws.nav.page()), Page::Home);
 }
 
@@ -669,7 +673,7 @@ fn the_whole_book_is_one_editor(cx: &mut TestAppContext) {
     type_text(cx, "钟");
     let after = stored(&lib, &third_doc);
     assert_eq!(after[0], format!("钟{}", before[0]), "typed into chapter 3");
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     cx.run_until_parked();
     assert_eq!(stored(&lib, &third_doc), before, "⌘Z undid it in chapter 3");
     // Canonical module addresses keep their precise page target. The whole
@@ -761,7 +765,7 @@ fn the_find_bar_steps_through_matches_and_live_words_follow(cx: &mut TestAppCont
     let live = cx.update(|_, cx| dr_view_stats::LiveWords::read(cx).docs[&doc].words);
     assert_eq!(live, words + 1, "the live count follows typing");
 
-    keys(cx, "cmd-f");
+    keys(cx, "secondary-f");
     draw(cx);
     assert!(view.read_with(cx, |ws, _| ws.find.is_some()));
     type_text(cx, "钟");
@@ -861,19 +865,21 @@ fn a_chapter_written_in_the_app_is_kept(cx: &mut TestAppContext, cx2: &mut TestA
     );
 
     // ⌘Z takes it all back, ⌘⇧Z brings it again.
-    let undone = press_until(vcx, "cmd-z", 12, || stored(&lib, &doc) == original);
+    let undone = press_until(vcx, "secondary-z", 12, || stored(&lib, &doc) == original);
     assert!(
         undone,
         "undo reached the original: {:?}",
         stored(&lib, &doc)
     );
-    let redone = press_until(vcx, "cmd-shift-z", 12, || stored(&lib, &doc) == written);
+    let redone = press_until(vcx, "secondary-shift-z", 12, || {
+        stored(&lib, &doc) == written
+    });
     assert!(redone, "redo reached the typing: {:?}", stored(&lib, &doc));
 
     // Another chapter, then back (⌘[): the first one's editor was kept.
     view.update(vcx, |ws, cx| ws.open(second.clone(), Open::KEEP, cx));
     open_editor(&view, vcx, &second);
-    keys(vcx, "cmd-[");
+    keys(vcx, "secondary-[");
     let back = open_editor(&view, vcx, &first);
     assert_eq!(back, editor, "the tab kept its editor");
     assert!(
@@ -1003,13 +1009,13 @@ fn the_corner_sets_the_status_and_immersive_writing_keeps_only_the_paper(cx: &mu
     wait_for(&view, cx, |ws| !ws.nav.is_open(&second));
 
     // ⌘⇧↩: only the paper; Esc: everything back.
-    keys(cx, "cmd-shift-enter");
+    keys(cx, "secondary-shift-enter");
     assert!(view.read_with(cx, |ws, _| ws.immersive));
     draw(cx);
     keys(cx, "escape");
     assert!(!view.read_with(cx, |ws, _| ws.immersive));
-    keys(cx, "cmd-shift-enter");
-    keys(cx, "cmd-shift-enter");
+    keys(cx, "secondary-shift-enter");
+    keys(cx, "secondary-shift-enter");
     assert!(!view.read_with(cx, |ws, _| ws.immersive));
     draw(cx);
 }
@@ -1202,8 +1208,8 @@ fn when_fill_covers_the_paper_its_tabs_do_not_answer_the_keyboard(cx: &mut TestA
     view.update_in(cx, |ws, window, cx| {
         ws.enter_fill(FillPlace::Right, window, cx)
     });
-    keys(cx, "cmd-w");
-    keys(cx, "cmd-alt-left");
+    keys(cx, "secondary-w");
+    keys(cx, "secondary-alt-left");
     let (tabs, page) = view.read_with(cx, |ws, _| (ws.nav.tabs().len(), ws.nav.page()));
     assert_eq!((tabs, page), (2, Page::Target(chapter(2))));
 }
@@ -1235,11 +1241,11 @@ fn a_comment_is_written_in_the_whole_book(cx: &mut TestAppContext) {
     let prose = cx.update(|_, cx| page.prose(cx));
     prose.update_in(cx, |p, window, cx| p.select(2, 0..2, window, cx));
     draw(cx);
-    keys(cx, "cmd-alt-m");
+    keys(cx, "secondary-alt-m");
     draw(cx);
     assert!(view.read_with(cx, |ws, _| ws.composer.is_some()));
     type_text(cx, "要改");
-    keys(cx, "cmd-enter");
+    keys(cx, "secondary-enter");
     let written = |lib: &Library| {
         let listed = lib
             .call(&Actor::User, "comment.list", json!({"book": book}))
@@ -1365,7 +1371,7 @@ fn the_find_bar_replaces_one_then_all_as_one_undo(cx: &mut TestAppContext) {
     assert!(before > 3, "{before}");
 
     cx.simulate_keystrokes(if cfg!(target_os = "macos") {
-        "cmd-alt-f"
+        "secondary-alt-f"
     } else {
         "ctrl-h"
     });
@@ -1396,7 +1402,7 @@ fn the_find_bar_replaces_one_then_all_as_one_undo(cx: &mut TestAppContext) {
     keys(cx, "escape");
     draw(cx);
     assert!(view.read_with(cx, |ws, _| ws.find.is_none()));
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     draw(cx);
     assert_eq!(count(&lib, "钟"), before - 1, "全部替换 is one undo");
 }
@@ -2240,7 +2246,7 @@ fn a_module_draws_a_filled_tab_canvas(cx: &mut TestAppContext) {
 #[gpui::test]
 fn fill_replaces_the_retired_shortcuts_and_restores_the_previous_sidebar(cx: &mut TestAppContext) {
     let (view, cx) = setup(cx, SettingsFile::in_memory(), None);
-    for key in ["cmd-alt-3", "cmd-alt-4", "cmd-alt-5"] {
+    for key in ["secondary-alt-3", "secondary-alt-4", "secondary-alt-5"] {
         keys(cx, key);
         assert_eq!(view.read_with(cx, |ws, _| ws.filled()), None);
     }
@@ -2782,7 +2788,7 @@ fn a_page_holding_a_section_in_view_and_cmd_z_leave_each_other_alone(cx: &mut Te
     cx.update(|window, cx| assert!(!view.read(cx).structure_has_keyboard(window, cx)));
     type_text(cx, "钟");
     assert_eq!(stored(&writer, &doc)[0], format!("钟{}", before[0]));
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     cx.run_until_parked();
     assert_eq!(stored(&writer, &doc), before, "⌘Z undid the typing");
     assert_eq!(title(), "改过的名字", "and left the book's command alone");
@@ -2807,7 +2813,7 @@ fn a_page_holding_a_section_in_view_and_cmd_z_leave_each_other_alone(cx: &mut Te
         Some(module.as_str()),
         "taking the keyboard is not taking the page"
     );
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     wait_for(&view, cx, |ws| {
         ws.book.v3().unwrap().entry(&entry).unwrap().title == original
     });
@@ -2879,7 +2885,7 @@ fn the_books_structure_undoes_from_the_notice_and_outside_the_prose(cx: &mut Tes
 
     // The find bar's field keeps ⌘Z: nothing of the book's is undone.
     let journal = top(&lib);
-    keys(cx, "cmd-f");
+    keys(cx, "secondary-f");
     draw(cx);
     cx.run_until_parked();
     assert!(view.read_with(cx, |ws, _| ws.find.is_some()));
@@ -2891,7 +2897,7 @@ fn the_books_structure_undoes_from_the_notice_and_outside_the_prose(cx: &mut Tes
         assert!(in_field, "the find bar's field has the keyboard");
         assert!(!view.read(cx).structure_has_keyboard(window, cx));
     });
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     cx.run_until_parked();
     assert_eq!(top(&lib), journal, "⌘Z in a text field undid no command");
     assert_eq!(stored(&lib, &doc), typed);
@@ -2911,7 +2917,7 @@ fn the_books_structure_undoes_from_the_notice_and_outside_the_prose(cx: &mut Tes
     cx.update(|window, cx| dr_shell::v3::page::toggle_level(host, entry, window, cx));
     wait_for(&view, cx, |ws| ws.dialog.is_some());
     draw(cx);
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     cx.run_until_parked();
     assert_eq!(top(&lib), journal, "⌘Z in a dialog undid no command");
     let dialog = view.read_with(cx, |ws, _| {
@@ -2949,7 +2955,7 @@ fn the_books_structure_undoes_from_the_notice_and_outside_the_prose(cx: &mut Tes
             "the editor has the keyboard"
         );
     });
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     cx.run_until_parked();
     assert_eq!(stored(&lib, &doc), original, "the editor undid its typing");
     assert_eq!(
@@ -2979,7 +2985,7 @@ fn the_books_structure_undoes_from_the_notice_and_outside_the_prose(cx: &mut Tes
     });
     draw(cx);
     cx.update(|window, cx| assert!(view.read(cx).structure_has_keyboard(window, cx)));
-    keys(cx, "cmd-shift-z");
+    keys(cx, "secondary-shift-z");
     wait_for(&view, cx, |ws| {
         children(ws).is_none()
             && ws
@@ -2994,7 +3000,7 @@ fn the_books_structure_undoes_from_the_notice_and_outside_the_prose(cx: &mut Tes
             format!("层级 · {title}")
         );
     });
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     wait_for(&view, cx, |ws| children(ws) == Some(below.clone()));
     assert_eq!(stored(&lib, &doc), original, "no prose was touched");
 
@@ -3010,7 +3016,7 @@ fn the_books_structure_undoes_from_the_notice_and_outside_the_prose(cx: &mut Tes
         ws.book.v3().unwrap().entry(&below[0]).unwrap().title == "帮手改的"
     });
     cx.update(|window, cx| assert!(view.read(cx).structure_has_keyboard(window, cx)));
-    keys(cx, "cmd-z");
+    keys(cx, "secondary-z");
     wait_for(&view, cx, |ws| children(ws) == Some(vec![below[0].clone()]));
     view.read_with(cx, |ws, _| {
         assert_eq!(

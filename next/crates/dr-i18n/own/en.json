@@ -555,9 +555,7 @@
     "add": "Add",
     "jumpDate": "Jump to date",
     "setDate": "Set date",
-    "fitTimeline": "Show all events",
-    "currentDate": "Date details",
-    "saveFirst": "Save the calendar before using it."
+    "fitTimeline": "Show all events"
   },
   "bookVersions": {
     "title": "Versions",

@@ -58,6 +58,7 @@ windows.workspace = true
 keyring.workspace = true
 
 [dev-dependencies]
+dr-testkit.workspace = true
 keyring.workspace = true
 minisign.workspace = true
 

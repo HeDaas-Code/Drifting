@@ -113,6 +113,38 @@ impl Wire {
             }
         })
     }
+    /// Only the active prompt can finish an ACP turn. Codex completion status
+    /// distinguishes success from interruption and failure.
+    pub fn completion(&self, message: &Value, prompt: Option<u64>) -> Option<Result<(), String>> {
+        match self.platform {
+            ExternalPlatform::Codex if message["method"] == "turn/completed" => {
+                let status = message
+                    .pointer("/params/turn/status")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown");
+                Some(if status == "completed" {
+                    Ok(())
+                } else {
+                    Err(status.to_owned())
+                })
+            }
+            ExternalPlatform::DeepseekHarness
+                if prompt.is_some()
+                    && message["id"].as_u64() == prompt
+                    && message.get("result").is_some() =>
+            {
+                let reason = message["result"]["stopReason"]
+                    .as_str()
+                    .unwrap_or("unknown");
+                Some(if reason == "end_turn" {
+                    Ok(())
+                } else {
+                    Err(reason.to_owned())
+                })
+            }
+            _ => None,
+        }
+    }
     pub fn session_id(&self, response: &Value) -> Option<String> {
         match self.platform {
             ExternalPlatform::Codex => response.pointer("/result/thread/id"),
@@ -283,6 +315,46 @@ mod tests {
         assert_eq!(
             acp.open("/synthetic", Some("s"), &mcp).unwrap()["method"],
             "session/load"
+        );
+    }
+}
+
+#[cfg(test)]
+mod completion_tests {
+    use super::*;
+
+    #[test]
+    fn terminal_status_and_the_active_acp_request_are_preserved() {
+        let codex = Wire {
+            platform: ExternalPlatform::Codex,
+        };
+        for status in ["completed", "failed", "interrupted"] {
+            let result = codex
+                .completion(
+                    &json!({"method":"turn/completed", "params":{"turn":{"status":status}}}),
+                    Some(11),
+                )
+                .unwrap();
+            assert_eq!(result.is_ok(), status == "completed");
+        }
+        let acp = Wire {
+            platform: ExternalPlatform::DeepseekHarness,
+        };
+        assert!(
+            acp.completion(&json!({"id":12,"result":{}}), Some(11))
+                .is_none()
+        );
+        assert!(
+            acp.completion(&json!({"id":11,"result":{}}), None)
+                .is_none()
+        );
+        assert!(
+            acp.completion(
+                &json!({"id":11,"result":{"stopReason":"end_turn"}}),
+                Some(11)
+            )
+            .unwrap()
+            .is_ok()
         );
     }
 }

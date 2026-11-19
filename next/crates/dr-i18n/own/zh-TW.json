@@ -539,9 +539,7 @@
     "add": "新增",
     "jumpDate": "跳轉日期",
     "setDate": "設定日期",
-    "fitTimeline": "顯示全部事件",
-    "currentDate": "日期詳情",
-    "saveFirst": "請先儲存曆法，再將其用於時間線。"
+    "fitTimeline": "顯示全部事件"
   },
   "bookVersions": {
     "title": "版本",

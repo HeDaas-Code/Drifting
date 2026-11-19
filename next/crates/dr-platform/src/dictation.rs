@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 use anyhow::{Context as _, Result, bail};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
+pub mod models;
+
 const RATE: u32 = 16_000;
 const MAX_SECONDS: usize = 120;
 const MAX_TEXT: u64 = 128 * 1024;
@@ -169,6 +171,27 @@ pub fn configured_model() -> Option<PathBuf> {
         .or_else(|| model_path().ok().filter(|path| path.is_file()))
 }
 
+/// Prefer the CPU runtime shipped beside the app; PATH is a development fallback.
+pub fn whisper_program() -> PathBuf {
+    if let Some(path) = std::env::var_os("DRIFTING_WHISPER_CLI") {
+        return path.into();
+    }
+    let filename = if cfg!(windows) {
+        "whisper-cli.exe"
+    } else {
+        "whisper-cli"
+    };
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(parent) = exe.parent()
+    {
+        let bundled = parent.join("dictation").join(filename);
+        if bundled.is_file() {
+            return bundled;
+        }
+    }
+    filename.into()
+}
+
 pub fn transcribe(audio: Audio, model: &Path, cancelled: &AtomicBool) -> Result<String> {
     if cancelled.load(Ordering::Relaxed) {
         bail!("Dictation cancelled");
@@ -177,7 +200,7 @@ pub fn transcribe(audio: Audio, model: &Path, cancelled: &AtomicBool) -> Result<
     let wav = dir.path().join("voice.wav");
     let output = dir.path().join("result");
     audio.write_wav(std::io::BufWriter::new(std::fs::File::create(&wav)?))?;
-    let program = std::env::var_os("DRIFTING_WHISPER_CLI").unwrap_or_else(|| "whisper-cli".into());
+    let program = whisper_program();
     let mut cmd = Command::new(program);
     cmd.args(["--no-gpu", "-l", "auto", "-otxt", "-m"])
         .arg(model)
@@ -227,6 +250,40 @@ pub fn transcribe(audio: Audio, model: &Path, cancelled: &AtomicBool) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The CI speech script supplies pinned runtime/model paths and invokes this
+    /// separately; ordinary offline tests never download a model.
+    #[test]
+    #[ignore = "requires the pinned CPU runtime and multilingual Tiny model"]
+    fn cpu_whisper_recognizes_testkit_speech_and_honors_cancellation() {
+        let wav = dr_testkit::media::speech_wav();
+        assert_eq!(&wav[..4], b"RIFF");
+        assert_eq!(&wav[36..40], b"data");
+        let audio = || Audio {
+            samples: wav[44..]
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|bytes| i16::from_le_bytes(*bytes))
+                .collect(),
+            sample_rate: u32::from_le_bytes(wav[24..28].try_into().unwrap()),
+        };
+        let model = configured_model().expect("the CI acceptance sets DRIFTING_WHISPER_MODEL");
+        assert!(transcribe(audio(), &model, &AtomicBool::new(true)).is_err());
+        let text = transcribe(audio(), &model, &AtomicBool::new(false))
+            .unwrap()
+            .to_lowercase();
+        for word in [
+            "synthetic",
+            "dictation",
+            "lighthouse",
+            "keeper",
+            "story",
+            "morning",
+        ] {
+            assert!(text.contains(word), "missing {word}: {text}");
+        }
+    }
 
     #[test]
     fn wav_contains_the_expected_sample_count_and_rate_after_resampling() {

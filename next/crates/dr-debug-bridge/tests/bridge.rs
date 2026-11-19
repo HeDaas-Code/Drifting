@@ -550,7 +550,10 @@ fn the_transfer_dialog_files_and_panels_are_read(cx: &mut TestAppContext) {
         s["transfer"]["state"] == json!("done")
     });
     assert_eq!(done["dialog"], json!(true));
-    assert_eq!(done["transfer"]["title"], json!("Library backup"));
+    let title = cx.update(|_, cx| {
+        dr_shell::strings::t(cx, dr_i18n::keys::settings::sync::backup::EXPORT_TITLE).to_string()
+    });
+    assert_eq!(done["transfer"]["title"], json!(title));
     assert!(
         done["transfer"]["text"]
             .as_str()

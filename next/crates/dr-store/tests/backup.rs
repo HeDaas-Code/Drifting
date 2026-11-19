@@ -336,7 +336,7 @@ fn an_older_backup_is_upgraded_while_staged() {
         let conn = rusqlite::Connection::open(old_root.join("library.sqlite")).unwrap();
         conn.execute_batch(
             "DROP TABLE agent_event; DROP TABLE agent_session; DROP TABLE local_book;
-             DROP TABLE local_state; DROP TABLE purged_doc; DROP INDEX reference_by_book;
+             DROP TABLE local_state; DROP TABLE pomodoro_session; DROP TABLE purged_doc; DROP INDEX reference_by_book;
              INSERT INTO library_meta (key, value) VALUES ('ws.recent', '[7]');",
         )
         .unwrap();

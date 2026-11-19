@@ -539,9 +539,7 @@
     "add": "추가",
     "jumpDate": "날짜로 이동",
     "setDate": "날짜 설정",
-    "fitTimeline": "모든 사건 표시",
-    "currentDate": "Date details",
-    "saveFirst": "Save the calendar before using it."
+    "fitTimeline": "모든 사건 표시"
   },
   "bookVersions": {
     "title": "버전",

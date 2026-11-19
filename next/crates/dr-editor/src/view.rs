@@ -955,19 +955,23 @@ impl Render for ChapterEditor {
             crate::assist::wrap(&self.assist, ProseEditor::element(&self.editor, cx))
                 .into_any_element()
         };
-        use gpui::{ParentElement as _, Styled as _};
+        use gpui::{ParentElement as _, Styled as _, prelude::FluentBuilder as _};
         let inner = gpui::div()
             .w_full()
+            .when(!flat, |column| column.h_full().flex().flex_col())
             .child(self.dictation.clone())
-            .child(inner)
+            .child(
+                gpui::div()
+                    .w_full()
+                    .when(!flat, |body| body.flex_1().min_h_0())
+                    .child(inner),
+            )
             .into_any_element();
         if self.embeds.is_none() {
             return inner;
         }
         // A material note or v3 body with embeds: tables on the clipboard, file drops/paste, and the highlight key.
-        use gpui::{
-            DragMoveEvent, ExternalPaths, InteractiveElement as _, prelude::FluentBuilder as _,
-        };
+        use gpui::{DragMoveEvent, ExternalPaths, InteractiveElement as _};
         use gpui_prose::input::actions::{Copy, Cut, Paste};
         let dropline = self
             .drop_gap

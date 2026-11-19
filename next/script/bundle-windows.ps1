@@ -90,6 +90,9 @@ if ($hasAllFonts) {
   $nsisArgs += "/DFONTS_DIR=$fontsDir"
 }
 if ($NextAlpha) {
+  $whisperDir = Join-Path $next '.cache\whisper\runtime'
+  if (-not (Test-Path (Join-Path $whisperDir 'whisper-cli.exe'))) { throw 'Build the CPU dictation runtime with script/build-whisper.py first' }
+  $nsisArgs += "/DWHISPER_DIR=$whisperDir"
   $nsisArgs += @('/DPRODUCT_NAME=Drifting Next Alpha', '/DBUNDLE_ID=cc.drifting.next.alpha', '/DURL_SCHEME=drifting-next-alpha')
 }
 $nsisArgs += (Join-Path $PSScriptRoot 'windows\drifting.nsi')

@@ -7,12 +7,16 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 binary=next/target/release/drifting
 test -f "$binary"
+test -x next/.cache/whisper/runtime/whisper-cli
+test -f next/.cache/whisper/runtime/whisper-LICENSE.txt
 for face in DriftingSans-Regular.ttf DriftingSans-Medium.ttf DriftingSans-SemiBold.ttf DriftingSerif-Regular.ttf DriftingSerif-Bold.ttf SarasaMonoSC-Regular.ttf OFL-1.1.txt; do
   test -f "next/.cache/fonts/$face"
 done
 mkdir -p out/release out/deb/DEBIAN out/deb/opt/drifting-next-alpha/fonts out/deb/usr/bin out/deb/usr/share/applications out/deb/usr/share/icons/hicolor/512x512/apps out/bin
 install -m 0755 "$binary" out/deb/opt/drifting-next-alpha/drifting-next-alpha
 cp next/.cache/fonts/* out/deb/opt/drifting-next-alpha/fonts/
+mkdir -p out/deb/opt/drifting-next-alpha/dictation
+cp next/.cache/whisper/runtime/* out/deb/opt/drifting-next-alpha/dictation/
 cat >out/deb/usr/bin/drifting-next-alpha <<'WRAPPER'
 #!/bin/sh
 exec /opt/drifting-next-alpha/drifting-next-alpha "$@"
@@ -25,7 +29,7 @@ Section: editors
 Priority: optional
 Architecture: amd64
 Maintainer: Drifting contributors
-Depends: libc6 (>= 2.39), libasound2t64, libdbus-1-3, libegl1, libfontconfig1, libvulkan1, libwayland-client0, libx11-xcb1, libxkbcommon0, libxkbcommon-x11-0
+Depends: libc6 (>= 2.39), libstdc++6, libasound2t64, libdbus-1-3, libegl1, libfontconfig1, libvulkan1, libwayland-client0, libx11-xcb1, libxkbcommon0, libxkbcommon-x11-0
 Recommends: mesa-vulkan-drivers
 Description: Drifting Next Alpha writing client
  Independent Next Alpha installation; does not replace Drifting 0.1.
@@ -51,6 +55,8 @@ echo 'df908b19f1ed1cdafa79508d415aa12d6c56ce4d56d4149aa8c09286718706e5  out/linu
 chmod +x out/linuxdeploy
 mkdir -p out/appimage/usr/bin/fonts
 cp next/.cache/fonts/* out/appimage/usr/bin/fonts/
+mkdir -p out/appimage/usr/bin/dictation
+cp next/.cache/whisper/runtime/* out/appimage/usr/bin/dictation/
 install -m 0755 "$binary" out/bin/drifting-next-alpha
 APPIMAGE_EXTRACT_AND_RUN=1 LDAI_NO_APPSTREAM=1 LDAI_OUTPUT="$PWD/out/release/$appimage" LINUXDEPLOY_OUTPUT_VERSION="$VERSION" \
   out/linuxdeploy --appdir out/appimage \

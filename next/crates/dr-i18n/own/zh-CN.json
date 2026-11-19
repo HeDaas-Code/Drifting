@@ -537,9 +537,7 @@
     "add": "添加",
     "jumpDate": "跳转日期",
     "setDate": "设置日期",
-    "fitTimeline": "显示全部事件",
-    "currentDate": "日期详情",
-    "saveFirst": "请先保存历法，再将其用于时间线。"
+    "fitTimeline": "显示全部事件"
   },
   "bookVersions": {
     "title": "版本",

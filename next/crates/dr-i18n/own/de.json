@@ -555,9 +555,7 @@
     "add": "Hinzufügen",
     "jumpDate": "Zum Datum",
     "setDate": "Datum festlegen",
-    "fitTimeline": "Alle Ereignisse anzeigen",
-    "currentDate": "Date details",
-    "saveFirst": "Save the calendar before using it."
+    "fitTimeline": "Alle Ereignisse anzeigen"
   },
   "bookVersions": {
     "title": "Versionen",

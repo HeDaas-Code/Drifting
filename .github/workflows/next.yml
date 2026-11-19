@@ -90,7 +90,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential clang cmake g++ gettext-base libasound2-dev libdbus-1-dev libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev lld llvm make pkg-config
+          sudo apt-get install --yes build-essential clang cmake g++ gettext-base fonts-noto-cjk libasound2-dev libdbus-1-dev libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev lld llvm make pkg-config
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: next
@@ -103,14 +103,17 @@ jobs:
         with:
           path: next/.cache/fonts
           key: dr-ui-fonts-${{ matrix.platform }}-${{ hashFiles('next/crates/dr-ui/assets/fonts/provenance.json', 'next/crates/dr-ui/script/build-fonts.py') }}
-      - if: steps.fonts.outputs.cache-hit != 'true'
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - if: steps.fonts.outputs.cache-hit != 'true'
         run: |
           python -m pip install fonttools==4.60.1
           python crates/dr-ui/script/build-fonts.py
+      - name: Build CPU dictation runtime
+        if: matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64'
+        run: |
+          python script/build-whisper.py
       - run: cargo fmt --all --check
       # --keep-going and --no-fail-fast: a run reports every crate and every
       # test binary that fails, not only the first. A Windows run takes over
@@ -119,6 +122,9 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked --keep-going -- -D warnings
       - if: ${{ !cancelled() }}
         run: cargo test --workspace --locked --no-fail-fast
+      - name: Recognize synthetic dictation through the app
+        if: ${{ !cancelled() && (matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64') }}
+        run: python script/check-dictation.py
       - if: ${{ !cancelled() }}
         run: cargo build --workspace --locked
       # The gates (simplifications.md §6): privacy, large files, retired

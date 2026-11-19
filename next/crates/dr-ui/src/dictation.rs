@@ -103,6 +103,29 @@ impl Dictation {
         }
         cx.notify();
     }
+    fn download(&mut self, model: dictation::models::Model, cx: &mut Context<Self>) {
+        self.reset(cx);
+        self.cancelled = Arc::new(AtomicBool::new(false));
+        let cancelled = self.cancelled.clone();
+        let generation = self.generation;
+        self.busy = true;
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move { dictation::models::download(model, &cancelled) })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.generation != generation {
+                    return;
+                }
+                this.busy = false;
+                this.error = result.err().map(|error| error.to_string());
+                cx.notify();
+            });
+        })
+        .detach();
+        cx.notify();
+    }
     fn install(&mut self, cx: &mut Context<Self>) {
         let picked = cx.prompt_for_paths(PathPromptOptions {
             files: true,
@@ -163,12 +186,28 @@ impl Render for Dictation {
                                 .on_click(cx.listener(|this, _, _, cx| this.reset(cx))),
                         )
                     })
-                    .when(!active, |row| {
-                        row.child(
-                            Button::new("dictation-model", "Model… / 模型…")
+                    .when(!active, |mut row| {
+                        row = row.child(
+                            Button::new("dictation-model", "Import model… / 导入模型…")
                                 .small()
                                 .on_click(cx.listener(|this, _, _, cx| this.install(cx))),
-                        )
+                        );
+                        if dictation::configured_model().is_none() {
+                            for (index, model) in dictation::models::MODELS.into_iter().enumerate()
+                            {
+                                row = row.child(
+                                    Button::new(
+                                        ("dictation-download", index),
+                                        format!("Download / 下载 {}", model.name),
+                                    )
+                                    .small()
+                                    .on_click(
+                                        cx.listener(move |this, _, _, cx| this.download(model, cx)),
+                                    ),
+                                );
+                            }
+                        }
+                        row
                     }),
             )
             .when(!draft.is_empty(), |el| {

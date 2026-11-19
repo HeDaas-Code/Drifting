@@ -28,9 +28,12 @@ fn aliases(source: &str) -> Vec<(String, String)> {
         else {
             continue;
         };
-        if let Some((path, alias)) = rest.trim_end_matches(';').split_once(" as ") {
-            let module = path.rsplit("::").next().unwrap_or(path);
-            map.push((alias.trim().to_owned(), module.to_owned()));
+        let imports = rest.trim_end_matches(';').trim_matches(['{', '}']);
+        for import in imports.split(',') {
+            if let Some((path, alias)) = import.trim().split_once(" as ") {
+                let module = path.rsplit("::").next().unwrap_or(path);
+                map.push((alias.trim().to_owned(), module.to_owned()));
+            }
         }
     }
     map
@@ -102,5 +105,18 @@ fn every_copied_key_is_used() {
     assert!(
         unused.is_empty(),
         "copied but unused (drop them from crates/dr-i18n/keys.txt): {unused:?}"
+    );
+}
+
+#[test]
+fn grouped_and_direct_imports_keep_their_aliases() {
+    assert_eq!(
+        aliases(
+            "use dr_i18n::keys::{calendar_editor as copy, common};\nuse keys::guide::workspace as w;"
+        ),
+        vec![
+            ("copy".into(), "calendar_editor".into()),
+            ("w".into(), "workspace".into())
+        ]
     );
 }

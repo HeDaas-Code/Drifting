@@ -62,7 +62,6 @@ pub fn install(cx: &mut App) {
         .and_then(|value| serde_json::from_value::<Config>(value).ok())
         .unwrap_or_default();
     let mode = restored.mode;
-    cx.set_global(glass::FrostedSurfaces(mode == Mode::Image));
     if mode == Mode::Image && preview_path(cx).is_none() {
         log::warn!(
             "the selected custom background is missing; using the solid background until it is replaced"
@@ -72,6 +71,7 @@ pub fn install(cx: &mut App) {
         Settings::set_device_memory(cx, KEY, serde_json::to_value(fallback).ok());
         Settings::flush(cx);
     }
+    cx.set_global(glass::FrostedSurfaces(self::mode(cx) == Mode::Image));
 }
 
 pub fn mode(cx: &App) -> Mode {
@@ -418,7 +418,7 @@ impl Render for Panel {
         let set_mode = |id, label: dr_i18n::Key, mode| {
             Button::new(id, t(cx, label))
                 .small()
-                .disabled(selected == mode)
+                .disabled(selected == mode || mode == Mode::Image && preview_path(cx).is_none())
                 .on_click(move |_, _, cx| {
                     let mut value = config(cx);
                     value.mode = mode;
@@ -453,7 +453,7 @@ impl Render for Panel {
                     }),
                 ),
         );
-        if settings.original.is_some() && selected == Mode::Image {
+        if settings.original.is_some() {
             view = view
                 .child(
                     div()
@@ -525,6 +525,44 @@ impl Render for Panel {
 mod tests {
     use super::*;
     use core::prelude::v1::test;
+
+    #[gpui::test]
+    fn missing_image_falls_back_to_opaque_surfaces_and_preserves_the_replace_record(
+        cx: &mut gpui::TestAppContext,
+    ) {
+        cx.update(|cx| {
+            dr_shell::init(
+                dr_shell::ShellInfo {
+                    app_name: "Drifting Next",
+                    bundle_id: "cc.drifting.next.dev",
+                    version: "0.2.0-dev",
+                    url_scheme: "drifting-next-dev",
+                    forced_appearance: None,
+                },
+                dr_shell::Services::default(),
+                dr_shell::SettingsFile::in_memory(),
+                cx,
+            );
+            let original = "synthetic-missing.png";
+            Settings::set_device_memory(
+                cx,
+                KEY,
+                Some(
+                    serde_json::to_value(Config {
+                        mode: Mode::Image,
+                        original: Some(original.into()),
+                        preview: Some("synthetic-missing-preview.png".into()),
+                        blur: 12,
+                    })
+                    .unwrap(),
+                ),
+            );
+            install(cx);
+            assert_eq!(mode(cx), Mode::Solid);
+            assert!(!cx.global::<glass::FrostedSurfaces>().0);
+            assert_eq!(config(cx).original.as_deref(), Some(original));
+        });
+    }
 
     #[test]
     fn source_copy_preview_blur_and_removal_stay_in_the_config_directory() {
