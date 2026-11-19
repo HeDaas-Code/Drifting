@@ -40,6 +40,13 @@ pub(super) fn validate_project_template(
         }
     }
     let mut pt: m::ProjectTemplate = convert(raw)?;
+    let mut calendar_ids = BTreeSet::new();
+    for calendar in &pt.project.calendars {
+        calendar.validate().map_err(WsError::invalid)?;
+        if !calendar_ids.insert(&calendar.id) {
+            return Err(WsError::invalid("duplicate calendar id"));
+        }
+    }
     let mut templates = BTreeMap::new();
     for tpl in &mut pt.templates {
         name_ok(&tpl.name)?;

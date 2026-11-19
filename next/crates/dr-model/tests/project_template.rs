@@ -51,6 +51,7 @@ fn minimal_valid_template() -> ProjectTemplateValue {
             author: "Lin".to_owned(),
         }),
         project: TemplateProject {
+            calendars: vec![],
             agent: Some(TemplateAgent {
                 name: "推理助手".to_owned(),
                 description: "核对线索与时间线".to_owned(),
@@ -321,6 +322,8 @@ fn minimal_valid_template() -> ProjectTemplateValue {
             primary: true,
         }],
         views: vec![TemplateView {
+            calendar_id: None,
+            calendar_calibration: None,
             sym_ref: "v1".to_owned(),
             name: "主时间线".to_owned(),
             lanes: vec![TemplateViewLane {

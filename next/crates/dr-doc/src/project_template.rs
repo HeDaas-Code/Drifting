@@ -1148,6 +1148,7 @@ where
     }
 
     let template_project = TemplateProject {
+        calendars: proj.calendars.clone(),
         agent: proj.agent.as_ref().map(Into::into),
         book: tpl_book,
         tabs: tpl_tabs,
@@ -1366,6 +1367,7 @@ where
             pins: Vec::new(),
             deleted_at: None,
             calendar_id: None,
+            calendar_calibration: None,
         };
 
         let eff_placements = effective_timeline_placements(
@@ -1420,6 +1422,8 @@ where
         }
 
         extracted_views.push(TemplateView {
+            calendar_id: v.calendar_id.clone(),
+            calendar_calibration: v.calendar_calibration,
             sym_ref,
             name: v.name.clone(),
             lanes,
@@ -1951,6 +1955,8 @@ pub fn from_seed_template(
             });
         }
         views.push(TemplateView {
+            calendar_id: v.calendar_id.clone(),
+            calendar_calibration: v.calendar_calibration,
             sym_ref: view_refs[&v.id].clone(),
             name: v.name.clone(),
             lanes,
@@ -1969,6 +1975,7 @@ pub fn from_seed_template(
         revision: revision.max(1),
         credit: None,
         project: TemplateProject {
+            calendars: pt.project.calendars.clone(),
             agent: pt.project.agent.as_ref().map(Into::into),
             book,
             tabs,
@@ -2100,6 +2107,7 @@ pub fn materialize_project_template(
 
     let project = ProjectDefinition {
         source,
+        calendars: val.project.calendars.clone(),
         agent: val.project.agent.as_ref().map(Into::into),
         book,
         tabs,
@@ -2290,7 +2298,8 @@ pub fn materialize_project_template(
             placements,
             pins,
             deleted_at: None,
-            calendar_id: None,
+            calendar_id: v.calendar_id.clone(),
+            calendar_calibration: v.calendar_calibration,
         });
     }
 

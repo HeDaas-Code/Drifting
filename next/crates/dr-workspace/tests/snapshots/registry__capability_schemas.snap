@@ -2217,6 +2217,1092 @@ expression: json
     "summary": "A book's writing days: words written per day (all devices), today, the last seven days, active days and the streak."
   },
   {
+    "access": "write",
+    "book_version": 5,
+    "concurrency": "book",
+    "input": {
+      "description": "One entity of a book.",
+      "properties": {
+        "book": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "book",
+        "id"
+      ],
+      "title": "EntityIn",
+      "type": "object"
+    },
+    "kind": "command",
+    "name": "calendar.delete",
+    "output": {
+      "description": "The entity a command changed.",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Done",
+      "type": "object"
+    },
+    "summary": "Delete a calendar that no stored timeline uses."
+  },
+  {
+    "access": "read",
+    "book_version": 5,
+    "concurrency": "shared",
+    "input": {
+      "description": "A book.",
+      "properties": {
+        "book": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "book"
+      ],
+      "title": "BookIn",
+      "type": "object"
+    },
+    "kind": "query",
+    "name": "calendar.list",
+    "output": {
+      "$defs": {
+        "CalendarSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "epoch": {
+              "$ref": "#/$defs/Date"
+            },
+            "epoch_day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "eras": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Era"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "intercalations": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Intercalation"
+              },
+              "type": "array"
+            },
+            "months": {
+              "items": {
+                "$ref": "#/$defs/Month"
+              },
+              "type": "array"
+            },
+            "moon": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "name": {
+              "type": "string"
+            },
+            "seasons": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "week": {
+              "default": [],
+              "description": "Empty means that this world does not group days into weeks.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "week_offset": {
+              "default": 0,
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "epoch",
+            "epoch_day",
+            "months",
+            "intercalations",
+            "eras",
+            "week",
+            "week_offset",
+            "seasons",
+            "moon"
+          ],
+          "type": "object"
+        },
+        "CyclePart": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "starts_at": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "starts_at"
+          ],
+          "type": "object"
+        },
+        "Date": {
+          "additionalProperties": false,
+          "description": "Month is an ordinal in that year's month sequence, including inserted months.",
+          "properties": {
+            "day": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
+        "Era": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "start_year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "start_year"
+          ],
+          "type": "object"
+        },
+        "Intercalation": {
+          "additionalProperties": false,
+          "properties": {
+            "adjustment": {
+              "$ref": "#/$defs/LeapAdjustment"
+            },
+            "when": {
+              "$ref": "#/$defs/Periodic"
+            }
+          },
+          "required": [
+            "when",
+            "adjustment"
+          ],
+          "type": "object"
+        },
+        "LeapAdjustment": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "days",
+                  "type": "string"
+                },
+                "month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "month",
+                "days"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "after_month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "month",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "after_month",
+                "name",
+                "days"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Month": {
+          "additionalProperties": false,
+          "properties": {
+            "days": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "days"
+          ],
+          "type": "object"
+        },
+        "NamedCycle": {
+          "additionalProperties": false,
+          "description": "Period and phase starts are integer units of 1/denominator days.\nThis can express e.g. a 29.53-day moon with length=2953, denominator=100.",
+          "properties": {
+            "denominator": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "length": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "offset": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/CyclePart"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "length",
+            "denominator",
+            "offset",
+            "parts"
+          ],
+          "type": "object"
+        },
+        "Periodic": {
+          "additionalProperties": false,
+          "properties": {
+            "every_years": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "except_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "offset_year": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "restore_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every_years",
+            "offset_year",
+            "except_every",
+            "restore_every"
+          ],
+          "type": "object"
+        }
+      },
+      "items": {
+        "$ref": "#/$defs/CalendarSpec"
+      },
+      "title": "Array_of_CalendarSpec",
+      "type": "array"
+    },
+    "summary": "List this book's author-defined calendars, including epochs, months, leap rules and celestial cycles."
+  },
+  {
+    "access": "write",
+    "book_version": 5,
+    "concurrency": "book",
+    "input": {
+      "$defs": {
+        "CalendarSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "epoch": {
+              "$ref": "#/$defs/Date"
+            },
+            "epoch_day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "eras": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Era"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "intercalations": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Intercalation"
+              },
+              "type": "array"
+            },
+            "months": {
+              "items": {
+                "$ref": "#/$defs/Month"
+              },
+              "type": "array"
+            },
+            "moon": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "name": {
+              "type": "string"
+            },
+            "seasons": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "week": {
+              "default": [],
+              "description": "Empty means that this world does not group days into weeks.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "week_offset": {
+              "default": 0,
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "epoch",
+            "epoch_day",
+            "months"
+          ],
+          "type": "object"
+        },
+        "CyclePart": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "starts_at": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "starts_at"
+          ],
+          "type": "object"
+        },
+        "Date": {
+          "additionalProperties": false,
+          "description": "Month is an ordinal in that year's month sequence, including inserted months.",
+          "properties": {
+            "day": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
+        "Era": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "start_year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "start_year"
+          ],
+          "type": "object"
+        },
+        "Intercalation": {
+          "additionalProperties": false,
+          "properties": {
+            "adjustment": {
+              "$ref": "#/$defs/LeapAdjustment"
+            },
+            "when": {
+              "$ref": "#/$defs/Periodic"
+            }
+          },
+          "required": [
+            "when",
+            "adjustment"
+          ],
+          "type": "object"
+        },
+        "LeapAdjustment": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "days",
+                  "type": "string"
+                },
+                "month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "month",
+                "days"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "after_month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "month",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "after_month",
+                "name",
+                "days"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Month": {
+          "additionalProperties": false,
+          "properties": {
+            "days": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "days"
+          ],
+          "type": "object"
+        },
+        "NamedCycle": {
+          "additionalProperties": false,
+          "description": "Period and phase starts are integer units of 1/denominator days.\nThis can express e.g. a 29.53-day moon with length=2953, denominator=100.",
+          "properties": {
+            "denominator": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "length": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "offset": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/CyclePart"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "length",
+            "denominator",
+            "offset",
+            "parts"
+          ],
+          "type": "object"
+        },
+        "Periodic": {
+          "additionalProperties": false,
+          "properties": {
+            "every_years": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "except_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "offset_year": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "restore_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every_years",
+            "offset_year"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "book": {
+          "type": "string"
+        },
+        "calendar": {
+          "$ref": "#/$defs/CalendarSpec"
+        }
+      },
+      "required": [
+        "book",
+        "calendar"
+      ],
+      "title": "PutIn",
+      "type": "object"
+    },
+    "kind": "command",
+    "name": "calendar.put",
+    "output": {
+      "description": "The entity a command changed.",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Done",
+      "type": "object"
+    },
+    "summary": "Create or replace one author-defined calendar without moving timeline events."
+  },
+  {
+    "access": "write",
+    "book_version": 5,
+    "concurrency": "book",
+    "input": {
+      "$defs": {
+        "CalendarSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "epoch": {
+              "$ref": "#/$defs/Date"
+            },
+            "epoch_day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "eras": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Era"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "intercalations": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Intercalation"
+              },
+              "type": "array"
+            },
+            "months": {
+              "items": {
+                "$ref": "#/$defs/Month"
+              },
+              "type": "array"
+            },
+            "moon": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "name": {
+              "type": "string"
+            },
+            "seasons": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "week": {
+              "default": [],
+              "description": "Empty means that this world does not group days into weeks.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "week_offset": {
+              "default": 0,
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "epoch",
+            "epoch_day",
+            "months"
+          ],
+          "type": "object"
+        },
+        "CyclePart": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "starts_at": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "starts_at"
+          ],
+          "type": "object"
+        },
+        "Date": {
+          "additionalProperties": false,
+          "description": "Month is an ordinal in that year's month sequence, including inserted months.",
+          "properties": {
+            "day": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
+        "Era": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "start_year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "start_year"
+          ],
+          "type": "object"
+        },
+        "Intercalation": {
+          "additionalProperties": false,
+          "properties": {
+            "adjustment": {
+              "$ref": "#/$defs/LeapAdjustment"
+            },
+            "when": {
+              "$ref": "#/$defs/Periodic"
+            }
+          },
+          "required": [
+            "when",
+            "adjustment"
+          ],
+          "type": "object"
+        },
+        "LeapAdjustment": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "days",
+                  "type": "string"
+                },
+                "month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "month",
+                "days"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "after_month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "month",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "after_month",
+                "name",
+                "days"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Month": {
+          "additionalProperties": false,
+          "properties": {
+            "days": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "days"
+          ],
+          "type": "object"
+        },
+        "NamedCycle": {
+          "additionalProperties": false,
+          "description": "Period and phase starts are integer units of 1/denominator days.\nThis can express e.g. a 29.53-day moon with length=2953, denominator=100.",
+          "properties": {
+            "denominator": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "length": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "offset": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/CyclePart"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "length",
+            "denominator",
+            "offset",
+            "parts"
+          ],
+          "type": "object"
+        },
+        "Periodic": {
+          "additionalProperties": false,
+          "properties": {
+            "every_years": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "except_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "offset_year": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "restore_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every_years",
+            "offset_year"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "book": {
+          "type": "string"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalendarSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalendarSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "book",
+        "id"
+      ],
+      "title": "RestoreIn",
+      "type": "object"
+    },
+    "kind": "command",
+    "name": "calendar.restore",
+    "output": {
+      "description": "The entity a command changed.",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Done",
+      "type": "object"
+    },
+    "summary": "Restore one calendar after checking its exact expected value."
+  },
+  {
     "access": "read",
     "book_version": 5,
     "concurrency": "shared",
@@ -11846,6 +12932,155 @@ expression: json
     "concurrency": "library",
     "input": {
       "$defs": {
+        "CalendarSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "epoch": {
+              "$ref": "#/$defs/Date"
+            },
+            "epoch_day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "eras": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Era"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "intercalations": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Intercalation"
+              },
+              "type": "array"
+            },
+            "months": {
+              "items": {
+                "$ref": "#/$defs/Month"
+              },
+              "type": "array"
+            },
+            "moon": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "name": {
+              "type": "string"
+            },
+            "seasons": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "week": {
+              "default": [],
+              "description": "Empty means that this world does not group days into weeks.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "week_offset": {
+              "default": 0,
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "epoch",
+            "epoch_day",
+            "months"
+          ],
+          "type": "object"
+        },
+        "Calibration": {
+          "additionalProperties": false,
+          "description": "An explicit calibration of a pre-calendar floating timeline axis.",
+          "properties": {
+            "coordinate": {
+              "format": "double",
+              "type": "number"
+            },
+            "day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "days_per_unit": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "coordinate",
+            "day",
+            "days_per_unit"
+          ],
+          "type": "object"
+        },
+        "CyclePart": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "starts_at": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "starts_at"
+          ],
+          "type": "object"
+        },
+        "Date": {
+          "additionalProperties": false,
+          "description": "Month is an ordinal in that year's month sequence, including inserted months.",
+          "properties": {
+            "day": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
         "EntryTemplate": {
           "properties": {
             "agent": {
@@ -11933,6 +13168,23 @@ expression: json
           ],
           "type": "object"
         },
+        "Era": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "start_year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "start_year"
+          ],
+          "type": "object"
+        },
         "FieldDef": {
           "properties": {
             "default_value": {
@@ -12009,6 +13261,22 @@ expression: json
             }
           ]
         },
+        "Intercalation": {
+          "additionalProperties": false,
+          "properties": {
+            "adjustment": {
+              "$ref": "#/$defs/LeapAdjustment"
+            },
+            "when": {
+              "$ref": "#/$defs/Periodic"
+            }
+          },
+          "required": [
+            "when",
+            "adjustment"
+          ],
+          "type": "object"
+        },
         "KvEntry": {
           "properties": {
             "id": {
@@ -12034,6 +13302,64 @@ expression: json
             "value"
           ],
           "type": "object"
+        },
+        "LeapAdjustment": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "days",
+                  "type": "string"
+                },
+                "month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "month",
+                "days"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "after_month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "month",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "after_month",
+                "name",
+                "days"
+              ],
+              "type": "object"
+            }
+          ]
         },
         "LevelSettingsOverride": {
           "properties": {
@@ -12256,6 +13582,94 @@ expression: json
           ],
           "type": "object"
         },
+        "Month": {
+          "additionalProperties": false,
+          "properties": {
+            "days": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "days"
+          ],
+          "type": "object"
+        },
+        "NamedCycle": {
+          "additionalProperties": false,
+          "description": "Period and phase starts are integer units of 1/denominator days.\nThis can express e.g. a 29.53-day moon with length=2953, denominator=100.",
+          "properties": {
+            "denominator": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "length": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "offset": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/CyclePart"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "length",
+            "denominator",
+            "offset",
+            "parts"
+          ],
+          "type": "object"
+        },
+        "Periodic": {
+          "additionalProperties": false,
+          "properties": {
+            "every_years": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "except_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "offset_year": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "restore_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every_years",
+            "offset_year"
+          ],
+          "type": "object"
+        },
         "ProjectBook": {
           "description": "The book (`project.book`): on when present, with its two word targets.\nIt has no start: the book reads the whole project from the root. An old\n`root` in an input is ignored.",
           "properties": {
@@ -12377,6 +13791,12 @@ expression: json
                 }
               ],
               "default": null
+            },
+            "calendars": {
+              "items": {
+                "$ref": "#/$defs/CalendarSpec"
+              },
+              "type": "array"
             },
             "source": {
               "anyOf": [
@@ -12772,6 +14192,16 @@ expression: json
         },
         "TimelineView": {
           "properties": {
+            "calendar_calibration": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Calibration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "calendar_id": {
               "type": [
                 "string",
@@ -12914,6 +14344,318 @@ expression: json
     "name": "project.get",
     "output": {
       "$defs": {
+        "CalendarSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "epoch": {
+              "$ref": "#/$defs/Date"
+            },
+            "epoch_day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "eras": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Era"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "intercalations": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Intercalation"
+              },
+              "type": "array"
+            },
+            "months": {
+              "items": {
+                "$ref": "#/$defs/Month"
+              },
+              "type": "array"
+            },
+            "moon": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "name": {
+              "type": "string"
+            },
+            "seasons": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NamedCycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "week": {
+              "default": [],
+              "description": "Empty means that this world does not group days into weeks.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "week_offset": {
+              "default": 0,
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "epoch",
+            "epoch_day",
+            "months",
+            "intercalations",
+            "eras",
+            "week",
+            "week_offset",
+            "seasons",
+            "moon"
+          ],
+          "type": "object"
+        },
+        "CyclePart": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "starts_at": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "starts_at"
+          ],
+          "type": "object"
+        },
+        "Date": {
+          "additionalProperties": false,
+          "description": "Month is an ordinal in that year's month sequence, including inserted months.",
+          "properties": {
+            "day": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
+        "Era": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "start_year": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "start_year"
+          ],
+          "type": "object"
+        },
+        "Intercalation": {
+          "additionalProperties": false,
+          "properties": {
+            "adjustment": {
+              "$ref": "#/$defs/LeapAdjustment"
+            },
+            "when": {
+              "$ref": "#/$defs/Periodic"
+            }
+          },
+          "required": [
+            "when",
+            "adjustment"
+          ],
+          "type": "object"
+        },
+        "LeapAdjustment": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "days",
+                  "type": "string"
+                },
+                "month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "month",
+                "days"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "after_month": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "days": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "month",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "after_month",
+                "name",
+                "days"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Month": {
+          "additionalProperties": false,
+          "properties": {
+            "days": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "days"
+          ],
+          "type": "object"
+        },
+        "NamedCycle": {
+          "additionalProperties": false,
+          "description": "Period and phase starts are integer units of 1/denominator days.\nThis can express e.g. a 29.53-day moon with length=2953, denominator=100.",
+          "properties": {
+            "denominator": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "length": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "offset": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/CyclePart"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "length",
+            "denominator",
+            "offset",
+            "parts"
+          ],
+          "type": "object"
+        },
+        "Periodic": {
+          "additionalProperties": false,
+          "properties": {
+            "every_years": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "except_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "offset_year": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "restore_every": {
+              "default": null,
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "every_years",
+            "offset_year",
+            "except_every",
+            "restore_every"
+          ],
+          "type": "object"
+        },
         "ProjectBook": {
           "description": "The book (`project.book`): on when present, with its two word targets.\nIt has no start: the book reads the whole project from the root. An old\n`root` in an input is ignored.",
           "properties": {
@@ -13149,6 +14891,12 @@ expression: json
             }
           ],
           "default": null
+        },
+        "calendars": {
+          "items": {
+            "$ref": "#/$defs/CalendarSpec"
+          },
+          "type": "array"
         },
         "editing_template": {
           "default": null,
@@ -16358,6 +18106,87 @@ expression: json
     "book_version": 5,
     "concurrency": "book",
     "input": {
+      "$defs": {
+        "Calibration": {
+          "additionalProperties": false,
+          "description": "An explicit calibration of a pre-calendar floating timeline axis.",
+          "properties": {
+            "coordinate": {
+              "format": "double",
+              "type": "number"
+            },
+            "day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "days_per_unit": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "coordinate",
+            "day",
+            "days_per_unit"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "book": {
+          "type": "string"
+        },
+        "calendar": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "calibration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Calibration"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required on first use. Later selections reuse the original calibration."
+        },
+        "view": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "book",
+        "view"
+      ],
+      "title": "ViewIn",
+      "type": "object"
+    },
+    "kind": "command",
+    "name": "timeline_view.calendar",
+    "output": {
+      "description": "The entity a command changed.",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Done",
+      "type": "object"
+    },
+    "summary": "Choose a calendar for this timeline; first use requires an explicit day-to-axis calibration."
+  },
+  {
+    "access": "write",
+    "book_version": 5,
+    "concurrency": "book",
+    "input": {
       "description": "One entity of a book.",
       "properties": {
         "book": {
@@ -16412,6 +18241,30 @@ expression: json
     "name": "timeline_view.list",
     "output": {
       "$defs": {
+        "Calibration": {
+          "additionalProperties": false,
+          "description": "An explicit calibration of a pre-calendar floating timeline axis.",
+          "properties": {
+            "coordinate": {
+              "format": "double",
+              "type": "number"
+            },
+            "day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "days_per_unit": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "coordinate",
+            "day",
+            "days_per_unit"
+          ],
+          "type": "object"
+        },
         "TimelineLane": {
           "properties": {
             "act_track": {
@@ -16503,6 +18356,16 @@ expression: json
         },
         "TimelineView": {
           "properties": {
+            "calendar_calibration": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Calibration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "calendar_id": {
               "type": [
                 "string",
@@ -16729,6 +18592,30 @@ expression: json
     "concurrency": "book",
     "input": {
       "$defs": {
+        "Calibration": {
+          "additionalProperties": false,
+          "description": "An explicit calibration of a pre-calendar floating timeline axis.",
+          "properties": {
+            "coordinate": {
+              "format": "double",
+              "type": "number"
+            },
+            "day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "days_per_unit": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "coordinate",
+            "day",
+            "days_per_unit"
+          ],
+          "type": "object"
+        },
         "TimelineLane": {
           "properties": {
             "act_track": {
@@ -16815,6 +18702,16 @@ expression: json
         },
         "TimelineView": {
           "properties": {
+            "calendar_calibration": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Calibration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "calendar_id": {
               "type": [
                 "string",
@@ -17148,6 +19045,98 @@ expression: json
       "type": "object"
     },
     "summary": "Rename a timeline view without changing its lanes, positions or pins."
+  },
+  {
+    "access": "write",
+    "book_version": 5,
+    "concurrency": "book",
+    "input": {
+      "$defs": {
+        "Calibration": {
+          "additionalProperties": false,
+          "description": "An explicit calibration of a pre-calendar floating timeline axis.",
+          "properties": {
+            "coordinate": {
+              "format": "double",
+              "type": "number"
+            },
+            "day": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "days_per_unit": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "coordinate",
+            "day",
+            "days_per_unit"
+          ],
+          "type": "object"
+        },
+        "Selection": {
+          "properties": {
+            "calendar": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "calibration": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Calibration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "properties": {
+        "book": {
+          "type": "string"
+        },
+        "expected": {
+          "$ref": "#/$defs/Selection"
+        },
+        "value": {
+          "$ref": "#/$defs/Selection"
+        },
+        "view": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "book",
+        "view",
+        "expected",
+        "value"
+      ],
+      "title": "RestoreSelectionIn",
+      "type": "object"
+    },
+    "kind": "command",
+    "name": "timeline_view.restore_calendar",
+    "output": {
+      "description": "The entity a command changed.",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Done",
+      "type": "object"
+    },
+    "summary": "Restore only a timeline's calendar selection and calibration after a value check."
   },
   {
     "access": "write",

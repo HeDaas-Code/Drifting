@@ -726,7 +726,12 @@ fn timeline_calendar_selection_survives_reopen() {
             .find(|view| view["id"] == "edit-view")
             .unwrap()
             .clone();
+    f.e.call("calendar.put", json!({
+        "book": f.book,
+        "calendar": dr_model::calendar::CalendarSpec::simple("fictional-calendar".into(), "Fictional".into())
+    }));
     view["calendar_id"] = json!("fictional-calendar");
+    view["calendar_calibration"] = json!({"coordinate":0,"day":0,"days_per_unit":1});
     f.e.call("timeline_view.put", json!({"book":f.book,"view":view}));
     let read = f.e.out("timeline_view.list", json!({"book":f.book}));
     let calendar_id = read

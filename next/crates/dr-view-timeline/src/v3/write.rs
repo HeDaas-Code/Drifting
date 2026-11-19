@@ -290,6 +290,7 @@ impl Timeline {
                         pins: vec![],
                         deleted_at: None,
                         calendar_id: None,
+                        calendar_calibration: None,
                     },
                 })
                 .map_err(|e| WsError::Internal(e.to_string()))?,

@@ -27,6 +27,10 @@ book.shelf                   query    shared   Everything the bookshelf shows, i
 book.trash                   command  book     Move a book to the trash (restorable; storage deletes it for good later).
 book.update                  command  book     Update selected book metadata fields without replacing other book data.
 book.writing_days            query    shared   A book's writing days: words written per day (all devices), today, the last seven days, active days and the streak.
+calendar.delete              command  book     Delete a calendar that no stored timeline uses.
+calendar.list                query    shared   List this book's author-defined calendars, including epochs, months, leap rules and celestial cycles.
+calendar.put                 command  book     Create or replace one author-defined calendar without moving timeline events.
+calendar.restore             command  book     Restore one calendar after checking its exact expected value.
 comment.anchors              query    shared   The stored anchors of the comments on one entity's prose, for an editor laying them out (comments without an anchor are not listed).
 comment.create               command  book     Add a comment on an entry, any module of an entry, a sub-part inside that module, a passage of prose, or floating.
 comment.delete               command  book     Delete a comment. A checklist item's comment is not deleted here: it goes when its line is deleted in the prose.
@@ -128,6 +132,7 @@ tab.put                      command  book     Add a left-sidebar tab that mount
 tab.remove                   command  book     Remove a left-sidebar tab (not what it mounts); 「全部」 stays.
 tab.select                   command  book     Remember the left-sidebar tab the project is on, for every device (kept in `layout:<book>`; not undoable; leaves the book document untouched).
 timeline_view.add_lane       command  book     Add one live lane to a view without replacing existing lane records or changing memberships. A lane is an entry that takes entries from elsewhere (「收别处的条目」 on); an entry with only its level switch on is refused. The lane holds what is hung on it, not what lives under it.
+timeline_view.calendar       command  book     Choose a calendar for this timeline; first use requires an explicit day-to-axis calibration.
 timeline_view.delete         command  book     Delete a timeline view while retaining lane entries and memberships; lanes leaving their last live view save the scale order of what is hung on them back to the memberships' manual order in the same commit.
 timeline_view.list           query    shared   List timeline views with their effective lanes, placements and time pins.
 timeline_view.move_lane      command  book     Change only one stored lane's order in a view, preserving hidden data and other lane positions.
@@ -138,6 +143,7 @@ timeline_view.remove         command  book     Remove an entry from a timeline l
 timeline_view.remove_lane    command  book     Remove one view lane and newly orphaned visible positions, saving the scale order of what is hung on it back to the memberships' manual order when leaving its last live view.
 timeline_view.remove_pin     command  book     Remove a time pin from a timeline view.
 timeline_view.rename         command  book     Rename a timeline view without changing its lanes, positions or pins.
+timeline_view.restore_calendar command  book     Restore only a timeline's calendar selection and calibration after a value check.
 timeline_view.restore_fields command  book     Restore selected stored timeline fields for undo or redo without replacing the rest of a view.
 timeline_view.set_lane_act_track command  book     Switch whether a stored lane in a view is displayed as a top act track.
 writing_day.record           command  book     Set this device's words for one day of a book (the writing-day recorder; not undoable).

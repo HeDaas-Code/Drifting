@@ -1,4 +1,4 @@
-# 功能模块 M01–M45
+# 功能模块 M01–M46
 
 > 这一页是 2026-11-07 的**原始模块清单**：每个模块作者能做什么、要对照的旧代码在哪。对照旧版功能时仍然用它；每个模块现在到哪一步见 [progress.md](progress.md)，结论在 `modules/` 下。
 >
@@ -112,6 +112,7 @@ F3 的命令注册表一好就能开，不必等阶段 3。
 | M43 | Windows 版 | 双架构的 NSIS 安装包；深链接注册；输入法验收（微软拼音）；字体回退 | `docs/windows.md`、`.github/workflows/windows.yml` | F7 | M |
 | M44 | 写作番茄钟 | 作品绑定、休眠/重启恢复、四轮长休息、可调时长、静音与统计记录 | [pomodoro](modules/pomodoro.md) | F6、M07 | M |
 | M45 | 整书命名版本 | 保存、变更摘要、恢复为独立作品、完整性与中断恢复 | [book-versions](modules/book-versions.md) | F2、F6、M41 | M |
+| M46 | 作者自定义历法 | 多历法、纪元与置闰、周期、统一坐标与日期标尺 | [calendars](modules/calendars.md) | F1、F3、M14 | L |
 
 ## 不在本计划里的
 

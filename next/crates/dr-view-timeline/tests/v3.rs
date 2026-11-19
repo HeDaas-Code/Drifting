@@ -168,6 +168,10 @@ fn visual<'a>(
     id: &str,
 ) -> (Entity<Host>, &'a mut VisualTestContext) {
     cx.executor().allow_parking();
+    let mut settings = SettingsFile::in_memory();
+    settings
+        .set(dr_shell::settings::registry::UI_LOCALE, "en".into(), None)
+        .unwrap();
     cx.update(|cx| {
         dr_shell::init(
             ShellInfo {
@@ -182,7 +186,7 @@ fn visual<'a>(
                 book: Some(id.to_owned()),
                 ..Services::default()
             },
-            SettingsFile::in_memory(),
+            settings,
             cx,
         )
     });

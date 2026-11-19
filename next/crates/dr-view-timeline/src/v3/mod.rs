@@ -1,4 +1,7 @@
 //! V3 bottom panel. V2.2 continues to use `BottomTimeline` unchanged.
+mod calendar_editor;
+mod calendar_form;
+mod date_dialog;
 mod interaction;
 pub mod model;
 mod render;
@@ -69,6 +72,7 @@ pub struct Timeline {
     book: Rc<Book>,
     selected: Option<String>,
     scroll: ScrollHandle,
+    jump_coordinate: Option<f64>,
     v_scroll: ScrollHandle,
     rail_scroll: ScrollHandle,
     /// The bar's scale and the filled panel's (`W9Bottom`): each pinched on
@@ -113,6 +117,7 @@ impl Timeline {
             book: host.book.clone(),
             selected: None,
             scroll: ScrollHandle::new(),
+            jump_coordinate: None,
             v_scroll: ScrollHandle::new(),
             rail_scroll: ScrollHandle::new(),
             bar: model::BAR,
@@ -133,6 +138,7 @@ impl Timeline {
     pub fn refresh(&mut self, host: &BottomHost, cx: &mut Context<Self>) {
         if self.book.id != host.book.id {
             self.selected = None;
+            self.jump_coordinate = None;
             self.kept_for = None;
             self.editing = None;
             self.submitting = None;
@@ -323,6 +329,7 @@ impl Timeline {
         (model::HEAD + model::RULER + model::ROW * self.lanes().len().min(4) as f32).max(180.0)
     }
     pub fn select(&mut self, id: String, cx: &mut Context<Self>) {
+        self.jump_coordinate = None;
         self.selected = Some(id);
         self.popup = None;
         self.remember(cx);

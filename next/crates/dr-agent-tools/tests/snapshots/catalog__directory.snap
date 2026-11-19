@@ -18,6 +18,9 @@ book.get [read] Read book metadata and project word targets; aggregate counts us
 book.sequence [read] Read the ordered book sequence: the whole project from the root, book prose only (empty when the project has no book).
 book.update [write] Update selected book metadata fields without replacing other book data.
 book.writing_days [read] A book's writing days: words written per day (all devices), today, the last seven days, active days and the streak.
+calendar.delete [write] Delete a calendar that no stored timeline uses.
+calendar.list [read] List this book's author-defined calendars, including epochs, months, leap rules and celestial cycles.
+calendar.put [write] Create or replace one author-defined calendar without moving timeline events.
 comment.anchors [read] The stored anchors of the comments on one entity's prose, for an editor laying them out (comments without an anchor are not listed).
 comment.create [write] Add a comment on an entry, any module of an entry, a sub-part inside that module, a passage of prose, or floating. Targets an entry, any module of an entry, a module sub-part (field, kv_row, plot_cell, patch, media, embed), a prose block or passage, an asset-library file (with optional region), or floating. Read the target or module first; read exact source prose before anchoring (a block needs that paragraph; ranges, anchor bytes, and embeds need the full document).
 comment.list [read] List comments (a target or module sub-part in the trash or gone shows as unlocated).
@@ -95,6 +98,7 @@ tab.move [write] Change a left-sidebar tab's position (「全部」 included).
 tab.put [write] Add a left-sidebar tab that mounts a level entry or the book sequence; one thing is mounted on one tab. A tab cannot mount a view (views go with the bottom panel).
 tab.remove [write] Remove a left-sidebar tab (not what it mounts); 「全部」 stays.
 tab.select [write] Remember the left-sidebar tab the project is on, for every device (kept in `layout:<book>`; not undoable; leaves the book document untouched).
+timeline_view.calendar [write] Choose a calendar for this timeline; first use requires an explicit day-to-axis calibration.
 timeline_view.delete [write] Delete a timeline view while retaining lane entries and memberships; lanes leaving their last live view save the scale order of what is hung on them back to the memberships' manual order in the same commit.
 timeline_view.list [read] List timeline views with their effective lanes, placements and time pins.
 timeline_view.place [write] Place or move an entry in a timeline, optionally joining a lane in the same commit.
@@ -120,6 +124,9 @@ book.get shared 3405b89fc23a4ce7c0d8663d8c6e9c8a1179e5e57f1b018c3a76b9aab9c425de
 book.sequence shared fc4cb9ed814e91156adecde1db023ff89bd26adf6d59b997786c7d646d28c2f0
 book.update book c9b8c91de4f1331368b187db91a606e226dbf69490048290efecfd7a54f5448f
 book.writing_days shared 1666501ae181dc1e83a34e6f26a03fc9a21240aa81f61d2827cb860bc719b4fd
+calendar.delete book b7d8fa2b421a674d558f35f1f74acc21af63184d2207ce4eb1bcd4400069395e
+calendar.list shared e21dc3c422c67d3d773cebf7038049596d99e2aa63972a8e4b07382de92b24fe
+calendar.put book da9dd9e1fa079cec1e4d19b7b76c6e32184abe4e61506ded6cf0032c6b1878f9
 comment.anchors shared 4d752a111e8d3be9cb0410c15a60d9e5a77f243816761fb8131e70074df16492
 comment.create book 3670bb3df0dbf5f4dced51817946605523e84575b577cc312f6f1ccada907cc6
 comment.list shared 1a2ef39608df3daf3ebd5fc8f60aeda66156d7746db1ee86dc223831cf6dc717
@@ -171,7 +178,7 @@ module.replace_prose book 361c1bd302fe4686ec8f8436f775f745cc53d462662430b50e2a83
 module.set_arrangement book c8baf155d081545d2e0ec82afb21683e91b57eefaa9b93a548da03a68d0175cc
 module.set_field book 92b766c15692773bb5a4a322939c033c267a4ea07312e63714df0be845989258
 module.set_prose book 469b61d50a65d8f80b190ac715c479c1dead92745a954d67e4574301f478fe67
-project.get shared f247f6e0c239d6a4de0f9651558b9f0ac8b56c6904571d59ef367e72f85cbd15
+project.get shared cbcecf2dae31f1f099939d8aa02fdc63af3db715c307015a0d43ff56b9e4870a
 project.update book d4f01e518616ece6d14245d4a738c4706da5b44ec0338a3862c4c4d034f45f54
 project_template.get shared d1d3c95c35ddd3b76dfb328394c458c3eb6f6849d757ad94c48a8143a61bbb51
 project_template.list shared 885f0943988d7a06cebf2ac97e5ba230a1d04b3a72df71b006371fa97550c1a8
@@ -197,10 +204,11 @@ tab.move book b6cd2dba62c3e344b71bbc75972b479cb4bbbb1aa19cc70a0dcb699011f003d6
 tab.put book 50580f39f9e74333eff26ecc9ee395463cb1022cc3767c34639f7b3b682c2fa0
 tab.remove book 90d9b01d82dbef8c8ad02786dfbd2c7f049cb4f32b8ee2fd44c1944ed6430fdb
 tab.select book c933d5b670c7ee7c993e72556e0e9c651943aeb204603a04d05cb906672dbd01
+timeline_view.calendar book 34a136b54284b7904e3c1c033f4aa994921d4548d8ac672b4189dc93d802b8c4
 timeline_view.delete book b9b820e998c15766620aab69cd316e35a73232e71898c52804f7995cf76f078c
-timeline_view.list shared aa25de6c16964e0fca0ba211af44a5079c1e356385d3e5bbf931e5397a77ce03
+timeline_view.list shared 28c42116f32ff5a82b715e578851705488337a50b7df8ec55e0ce62018e22688
 timeline_view.place book f30b36fa0c3148798c05b13eb4f0018ffc1b8fd21c2b707a0f45c5886cf7d2a2
-timeline_view.put book 1cb44f6e971399d2fb33b35fc0b2ea113de38b11d3284676c89b641874f074d7
+timeline_view.put book 437854ec3c0779098040a2f35421ec8fb0ae20c457c30c195a795408bf2014ab
 timeline_view.put_pin book 119101034ed5c312105086e6f6f29eae7bc66848f8d0a5a32c6c9ec441e8a2cc
 timeline_view.remove book 3f4bd9722c0357dde8b16cc87079f5b1070812d11434661261d3755cbac1f707
 timeline_view.remove_pin book 052b2d3b2b7d381df822fca46514637b9982fad3bfd76fc33bb904b6b7a4d7c2
@@ -216,6 +224,7 @@ book.purge_expired: library-wide lifecycle operation
 book.restore: book lifecycle belongs to the library
 book.shelf: no current-book input boundary
 book.trash: book lifecycle belongs to the library
+calendar.restore: field-scoped calendar undo is reserved for its editing view
 comment.delete: comment deletion is reserved for the author
 comment.project: storage, editor, or derived-state maintenance
 comment.restore_body: scoped comment text undo is internal until K6 provides a guarded facade
@@ -243,6 +252,7 @@ timeline_view.add_lane: local timeline edits need exact lane, placement, and pin
 timeline_view.move_lane: local timeline edits need exact lane, placement, and pin read coverage
 timeline_view.remove_lane: local timeline edits need exact lane, placement, and pin read coverage
 timeline_view.rename: local timeline edits need exact lane, placement, and pin read coverage
+timeline_view.restore_calendar: field-scoped calendar undo is reserved for its editing view
 timeline_view.restore_fields: scoped timeline undo is internal until K6 provides a guarded facade
 timeline_view.set_lane_act_track: local timeline edits need exact lane, placement, and pin read coverage
 writing_day.record: storage, editor, or derived-state maintenance

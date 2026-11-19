@@ -80,6 +80,11 @@ pub(super) fn backing(subject: &str, name: &str, output: &Value) -> Backing {
             RecordKey::record("project", "agent"),
             RecordKey::record("project", "book"),
         ]),
+        "calendar" => Backing::Records(vec![if any {
+            RecordKey::record("project", "calendars")
+        } else {
+            RecordKey::record("project", "calendars").at([id])
+        }]),
         "tab" => Backing::Records(vec![if any {
             RecordKey::record("project", "tabs")
         } else {

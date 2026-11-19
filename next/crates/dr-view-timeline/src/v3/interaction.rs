@@ -41,6 +41,12 @@ pub enum PinEdit {
     Color(Option<String>),
     Bind(Option<String>),
     At(f64),
+    DateAt {
+        at: f64,
+        expected: f64,
+        rules: Box<dr_model::calendar::CalendarSpec>,
+        mapping: dr_model::calendar::Calibration,
+    },
 }
 
 impl Timeline {
@@ -204,6 +210,19 @@ impl Timeline {
         };
         self.popup = None;
         self.write(cx, move |lib, book| {
+            let mut observations = if let PinEdit::DateAt { rules, .. } = &edit {
+                lib.observe_records(
+                    &format!("book:{book}"),
+                    &[
+                        dr_workspace::RecordKey::record("project", "calendars")
+                            .at([rules.id.as_str()]),
+                        dr_workspace::RecordKey::timeline_view(&view).at(["calendar_id"]),
+                        dr_workspace::RecordKey::timeline_view(&view).at(["calendar_calibration"]),
+                    ],
+                )?
+            } else {
+                Vec::new()
+            };
             // Merge one field into the latest pin, so rename/colour/binding
             // and dragging cannot clobber one another while a snapshot lags.
             // Observe the stored pin before reading the list: the replacement
@@ -225,13 +244,45 @@ impl Timeline {
                 PinEdit::Color(s) => pin.color = s,
                 PinEdit::Bind(s) => pin.entry = s,
                 PinEdit::At(at) => pin.at = at,
+                PinEdit::DateAt {
+                    at,
+                    expected,
+                    rules,
+                    mapping,
+                } => {
+                    let current = lib
+                        .run::<dr_workspace::commands::v3::calendar::CalendarList>(
+                            &Actor::User,
+                            BookIn { book: book.clone() },
+                        )?
+                        .output;
+                    let selection = lib
+                        .run::<timeline::ViewList>(&Actor::User, BookIn { book: book.clone() })?
+                        .output
+                        .into_iter()
+                        .find(|selected| selected.id == view);
+                    if pin.at != expected
+                        || !current.contains(rules.as_ref())
+                        || selection.is_none_or(|selected| {
+                            selected.calendar_id.as_ref() != Some(&rules.id)
+                                || selected.calendar_calibration != Some(mapping)
+                        })
+                    {
+                        return Err(WsError::Conflict(
+                            "calendar date changed while editing".into(),
+                        ));
+                    }
+                    pin.at = at;
+                }
             }
-            write::replace(
-                &lib,
+            observations.push(stored);
+            lib.call_guarded(
+                &Actor::User,
                 "timeline_view.put_pin",
                 serde_json::json!({"book":book,"view":view,"pin":pin}),
-                stored,
-            )
+                WritePreconditions::from_records(observations),
+            )?;
+            Ok(())
         });
     }
     pub fn delete_pin(&mut self, pin: String, cx: &mut Context<Self>) {
@@ -250,7 +301,7 @@ impl Timeline {
     pub fn order_at(&self, x: Pixels) -> Option<f64> {
         let bounds = self.bounds.get()?;
         let view = self.view()?;
-        let min = model::extent(view).0;
+        let min = self.axis_extent(view).0;
         Some(
             min + f64::from(
                 (f32::from(x - bounds.origin.x)

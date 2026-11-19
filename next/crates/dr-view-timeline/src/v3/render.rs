@@ -70,6 +70,35 @@ impl Timeline {
                 .on_click(cx.listener(|this, _, w, cx| this.rename(true, w, cx))),
         )
         .child(div().flex_1())
+        .when(self.view().is_some(), |el| {
+            el.child(
+                PanelIconButton::new("timeline-calendar", Icon::Ri)
+                    .label(t(cx, keys::calendar_editor::TITLE))
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        super::calendar_editor::open(this, window, cx)
+                    })),
+            )
+        })
+        .when(self.calendar().is_some(), |el| {
+            el.child(
+                PanelIconButton::new("timeline-date-jump", Icon::Locate)
+                    .label(t(cx, keys::calendar_editor::JUMP_DATE))
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        super::date_dialog::open(this, super::date_dialog::Target::Jump, window, cx)
+                    })),
+            )
+        })
+        .when(self.jump_coordinate.is_some(), |el| {
+            el.child(
+                PanelIconButton::new("timeline-date-fit", Icon::Spread)
+                    .label(t(cx, keys::calendar_editor::FIT_TIMELINE))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.jump_coordinate = None;
+                        this.scroll.set_offset(point(px(0.), px(0.)));
+                        cx.notify();
+                    })),
+            )
+        })
         .when(!self.lanes().is_empty(), |el| {
             el.child(
                 PanelIconButton::new("v3-place-entry", Icon::FileText)
@@ -276,6 +305,38 @@ impl Timeline {
                 }
             }
             MenuOf::Clip { entry, lane } => {
+                if self.calendar().is_some()
+                    && let Some(placement) = self
+                        .view()
+                        .and_then(|view| {
+                            view.placements
+                                .iter()
+                                .find(|placement| &placement.entry == entry)
+                        })
+                        .cloned()
+                {
+                    menu = menu.child(
+                        MenuItem::new(
+                            "timeline-entry-date",
+                            Icon::Ri,
+                            t(cx, keys::calendar_editor::SET_DATE),
+                        )
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
+                                super::date_dialog::open(
+                                    this,
+                                    super::date_dialog::Target::Entry {
+                                        id: placement.entry.clone(),
+                                        at: placement.at,
+                                    },
+                                    window,
+                                    cx,
+                                )
+                            },
+                        )),
+                    );
+                }
+
                 let (entry, lane) = (entry.clone(), lane.clone());
                 menu = menu.child(
                     MenuItem::new(
@@ -289,6 +350,34 @@ impl Timeline {
                 );
             }
             MenuOf::Pin(id) => {
+                if self.calendar().is_some()
+                    && let Some(pin) = self
+                        .view()
+                        .and_then(|view| view.pins.iter().find(|pin| &pin.id == id))
+                        .cloned()
+                {
+                    menu = menu.child(
+                        MenuItem::new(
+                            "timeline-pin-date",
+                            Icon::Ri,
+                            t(cx, keys::calendar_editor::SET_DATE),
+                        )
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
+                                super::date_dialog::open(
+                                    this,
+                                    super::date_dialog::Target::Pin {
+                                        id: pin.id.clone(),
+                                        at: pin.at,
+                                    },
+                                    window,
+                                    cx,
+                                )
+                            },
+                        )),
+                    );
+                }
+
                 let pin_id = id.clone();
                 menu = menu.child(
                     MenuItem::new(
@@ -788,7 +877,7 @@ impl Timeline {
     ) -> AnyElement {
         let theme = Theme::of(window, cx);
         let palette = theme.palette;
-        let (min, max) = model::extent(view);
+        let (min, max) = self.axis_extent(view);
         let unit = self.scale().unit();
         let width = ((max - min) as f32 * unit).clamp(800., 10_000_000.);
         let left = -f32::from(self.scroll.offset().x);
@@ -817,28 +906,49 @@ impl Timeline {
             }));
         // A label on every tick (one `格`); pinched in so far that labels
         // would run into each other, on every other one and so on.
+        let min_label_gap = if self.calendar().is_some() {
+            145.
+        } else {
+            MIN_LABEL_GAP
+        };
         let every = model::TICK
             * f64::from(
-                (MIN_LABEL_GAP / (unit * model::TICK as f32))
+                (min_label_gap / (unit * model::TICK as f32))
                     .ceil()
                     .max(1.0),
             );
         let first = ((min + f64::from(left / unit)) / every).floor() * every;
         for step in 0..(f64::from(visible / unit) / every).ceil() as usize + 2 {
             let tick = first + step as f64 * every;
+            let label = view
+                .calendar_id
+                .as_ref()
+                .and_then(|id| {
+                    self.book
+                        .v3()?
+                        .project
+                        .calendars
+                        .iter()
+                        .find(|calendar| &calendar.id == id)
+                })
+                .zip(view.calendar_calibration)
+                .and_then(|(calendar, mapping)| {
+                    calendar.format_day(mapping.to_day(tick).ok()?).ok()
+                })
+                .unwrap_or_else(|| tick.to_string());
             ruler = ruler.child(
                 div()
                     .absolute()
                     .left(px((tick - min) as f32 * unit))
                     .id(SharedString::from(format!("v3-tick-{tick}")))
                     .role(gpui::Role::Label)
-                    .aria_label(tick.to_string())
-                    .w(px(40.))
+                    .aria_label(label.clone())
+                    .w(px(120.))
                     .top(px(22.))
                     .whitespace_nowrap()
                     .text_xs()
                     .text_color(palette.muted().solid())
-                    .child(tick.to_string()),
+                    .child(label),
             );
         }
         for pin in &view.pins {

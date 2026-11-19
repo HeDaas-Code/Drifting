@@ -608,7 +608,45 @@ impl<'a> BookViewV3<'a> {
             agent,
             book,
             tabs: shown_project_tabs(Self::read_stored_tabs(f.get("tabs"))),
+            calendars: Self::read_calendars(f.get("calendars")),
         }
+    }
+
+    fn read_calendars(value: Option<&LoroValue>) -> Vec<dr_model::calendar::CalendarSpec> {
+        let Some(LoroValue::Map(map)) = value else {
+            return Vec::new();
+        };
+        let mut calendars: Vec<_> = map
+            .iter()
+            .filter_map(|(id, value)| {
+                let LoroValue::String(json) = value else {
+                    return None;
+                };
+                let spec: dr_model::calendar::CalendarSpec = serde_json::from_str(json).ok()?;
+                (spec.id == *id && spec.validate().is_ok()).then_some(spec)
+            })
+            .collect();
+        calendars.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.id.cmp(&b.id)));
+        calendars
+    }
+
+    /// Strict editing read: malformed or future rules must not be overwritten.
+    pub fn calendar(&self, id: &str) -> Result<Option<dr_model::calendar::CalendarSpec>> {
+        let project = self.doc.get_map(book_v3::PROJECT).get_deep_value();
+        let Some(value) = F(&project).sub("calendars").and_then(|map| map.get(id)) else {
+            return Ok(None);
+        };
+        let LoroValue::String(json) = value else {
+            return Err(DocError::Calendar("unsupported calendar record".into()));
+        };
+        let spec: dr_model::calendar::CalendarSpec =
+            serde_json::from_str(json).map_err(|error| DocError::Calendar(error.to_string()))?;
+        spec.validate()
+            .map_err(|error| DocError::Calendar(error.into()))?;
+        if spec.id != id {
+            return Err(DocError::Calendar("calendar id mismatch".into()));
+        }
+        Ok(Some(spec))
     }
 
     /// The tab records stored under `project.tabs`, sorted by `(pos, id)`.
@@ -1319,6 +1357,10 @@ impl<'a> BookViewV3<'a> {
             pins,
             deleted_at: f.ts("deleted_at"),
             calendar_id: f.opt_string("calendar_id"),
+            calendar_calibration: f
+                .opt_string("calendar_calibration")
+                .and_then(|raw| serde_json::from_str::<dr_model::calendar::Calibration>(&raw).ok())
+                .filter(|mapping| mapping.validate().is_ok()),
         })
     }
 

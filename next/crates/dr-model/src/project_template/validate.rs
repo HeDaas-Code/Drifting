@@ -713,6 +713,7 @@ pub fn validate_project_template_value(
             pins: Vec::new(),
             deleted_at: None,
             calendar_id: None,
+            calendar_calibration: None,
         };
 
         let mut seen_placements = BTreeSet::new();
@@ -793,6 +794,31 @@ pub fn validate_project_template_value(
     }
 
     // 7. Validate `project.book` and `project.tabs`.
+    let mut calendars = BTreeSet::new();
+    for calendar in &val.project.calendars {
+        calendar
+            .validate()
+            .map_err(|error| ProjectTemplateError::Invalid(error.into()))?;
+        if !calendars.insert(calendar.id.as_str()) {
+            return Err(ProjectTemplateError::Invalid(
+                "duplicate calendar id".into(),
+            ));
+        }
+    }
+    for view in &val.views {
+        if let Some(id) = &view.calendar_id
+            && (!calendars.contains(id.as_str()) || view.calendar_calibration.is_none())
+        {
+            return Err(ProjectTemplateError::Invalid(
+                "view calendar is absent or uncalibrated".into(),
+            ));
+        }
+        if let Some(mapping) = view.calendar_calibration {
+            mapping
+                .validate()
+                .map_err(|error| ProjectTemplateError::Invalid(error.into()))?;
+        }
+    }
     let has_book = val.project.book.is_some();
     if let Some(book) = &val.project.book
         && (book.word_target.is_some_and(|n| n < 0)

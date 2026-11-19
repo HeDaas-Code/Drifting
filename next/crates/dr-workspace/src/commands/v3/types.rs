@@ -362,6 +362,8 @@ pub struct TimelineView {
     pub deleted_at: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calendar_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar_calibration: Option<dr_model::calendar::Calibration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -712,6 +714,7 @@ impl From<&dr_model::v3::TimelineView> for TimelineView {
             pins: v.pins.iter().map(Into::into).collect(),
             deleted_at: v.deleted_at.map(|t| t.0),
             calendar_id: v.calendar_id.clone(),
+            calendar_calibration: v.calendar_calibration,
         }
     }
 }
@@ -878,6 +881,8 @@ pub struct ProjectTab {
 pub struct Project {
     #[serde(default)]
     pub source: Option<ProjectTemplateRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub calendars: Vec<dr_model::calendar::CalendarSpec>,
     #[serde(default)]
     pub agent: Option<TemplateAgentConfig>,
     #[serde(default)]
@@ -904,6 +909,7 @@ impl Project {
         let p = s.project();
         Self {
             source: p.source.as_ref().map(Into::into),
+            calendars: p.calendars.clone(),
             agent: p.agent.as_ref().map(Into::into),
             book: p.book.as_ref().map(Into::into),
             tabs: p
@@ -1128,6 +1134,8 @@ impl JsonSchema for ProjectCreateTemplate {
 pub struct ProjectDefinitionInput {
     #[serde(default)]
     pub source: Option<ProjectTemplateRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub calendars: Vec<dr_model::calendar::CalendarSpec>,
     #[serde(default)]
     pub agent: Option<TemplateAgentConfig>,
     #[serde(default)]
