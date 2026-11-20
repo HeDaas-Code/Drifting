@@ -241,19 +241,25 @@ impl TrayController {
     /// Windows; on other platforms returns an inert controller with the same
     /// command channel and label validation.
     pub fn install(identity: &Identity, labels: TrayLabels) -> Result<Arc<Self>, TrayError> {
-        let controller = Arc::new(Self {
-            state: Mutex::new(TrayState::new(identity, labels)),
-            commands: Mutex::new(Vec::new()),
-            waker: Mutex::new(None),
-            #[cfg(windows)]
-            native: Mutex::new(None),
-        });
+        let controller = Self::controller(identity, labels);
         #[cfg(windows)]
         {
             let native = windows_impl::NativeTray::create(identity.product_name, &controller)?;
             *controller.native.lock().unwrap_or_else(|e| e.into_inner()) = Some(native);
         }
         Ok(controller)
+    }
+
+    // Queue and lifecycle tests must not depend on Explorer's notification
+    // area, which is absent on unattended Windows runners.
+    fn controller(identity: &Identity, labels: TrayLabels) -> Arc<Self> {
+        Arc::new(Self {
+            state: Mutex::new(TrayState::new(identity, labels)),
+            commands: Mutex::new(Vec::new()),
+            waker: Mutex::new(None),
+            #[cfg(windows)]
+            native: Mutex::new(None),
+        })
     }
 
     /// Updates the tray menu labels in the current interface language.
@@ -677,8 +683,7 @@ mod tests {
 
     #[test]
     fn controller_queues_commands_updates_labels_and_wakes_listener() {
-        let controller = TrayController::install(&DEVELOPMENT, TrayLabels::default())
-            .expect("controller installs");
+        let controller = TrayController::controller(&DEVELOPMENT, TrayLabels::default());
         let woken = Arc::new(AtomicUsize::new(0));
         let woken_clone = woken.clone();
         controller.set_waker(move || {

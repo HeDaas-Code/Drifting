@@ -125,6 +125,20 @@ pub fn windows_move_write_through(
         ) -> i32;
     }
 
+    // Win32 calls do not receive std::fs's automatic long-path conversion.
+    // Resolve existing parents, preserving the final component (and rename
+    // semantics for symlinks). Canonical parents carry the verbatim prefix,
+    // including UNC paths; the destination itself may not exist yet.
+    let verbatim = |path: &Path| -> io::Result<std::path::PathBuf> {
+        let parent = path.parent().filter(|p| !p.as_os_str().is_empty());
+        let parent = fs::canonicalize(parent.unwrap_or_else(|| Path::new(".")))?;
+        let name = path.file_name().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "move path needs a file name")
+        })?;
+        Ok(parent.join(name))
+    };
+    let source = verbatim(source)?;
+    let destination = verbatim(destination)?;
     let source = source
         .as_os_str()
         .encode_wide()
