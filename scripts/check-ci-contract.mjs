@@ -10,7 +10,10 @@ function requireMatch(source, pattern, message) {
   if (!pattern.test(source)) errors.push(message);
 }
 
-requireMatch(ci, /^\s{4}branches: \[main\]$/mu, 'ordinary CI must run for main pushes');
+const push = /^  push:\n((?: {4}[^\n]*\n)*)/mu.exec(ci)?.[1] ?? '';
+const pushBranches = /^ {4}branches: \[([^\]]+)\]$/mu.exec(push)?.[1]
+  ?.split(',').map((branch) => branch.trim().replace(/^['"]|['"]$/gu, '')) ?? [];
+if (!pushBranches.includes('main')) errors.push('ordinary CI must run for main pushes');
 requireMatch(ci, /^\s{2}pull_request:\s*$/mu, 'ordinary CI must run for pull requests');
 if (/^\s{4}tags:/mu.test(ci)) {
   errors.push('ordinary CI must not duplicate the release workflow on tags');
