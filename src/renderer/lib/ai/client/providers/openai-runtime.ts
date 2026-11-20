@@ -18,6 +18,16 @@ export interface OpenAIProviderConfig {
   apiKey: string;
   defaultModel?: string;
   baseURL?: string;
+  /**
+   * Fork (relay): never send `reasoning_effort`, not even `none`. Relay
+   * backends vary; a strict one may reject the OpenAI-only parameter.
+   */
+  omitReasoningEffort?: boolean;
+  /**
+   * Fork (relay): replace the SDK's fetch. The relay client passes a native
+   * transport adapter because relay gateways reject CORS preflights.
+   */
+  fetchImpl?: typeof fetch;
 }
 
 /** OpenAI Chat Completions adapter with strict Agent terminal accounting. */
@@ -28,14 +38,17 @@ export class OpenAIProvider implements LLMProvider {
 
   private readonly client: OpenAI;
   private readonly defaultModel: string;
+  private readonly omitReasoningEffort: boolean;
 
   constructor(config: OpenAIProviderConfig) {
     this.client = new OpenAI({
       apiKey: config.apiKey,
       ...(config.baseURL ? { baseURL: config.baseURL } : {}),
+      ...(config.fetchImpl ? { fetch: config.fetchImpl } : {}),
       dangerouslyAllowBrowser: true,
     });
     this.defaultModel = config.defaultModel ?? defaultAgentProviderModel('openai');
+    this.omitReasoningEffort = config.omitReasoningEffort === true;
   }
 
   async complete(request: AICompletionRequest): Promise<AICompletionResponse> {
@@ -49,9 +62,11 @@ export class OpenAIProvider implements LLMProvider {
           tools: buildTools(request),
           tool_choice: buildToolChoice(request),
           max_completion_tokens: request.maxOutputTokens,
-          ...(allowsReasoningOff(model)
-            ? { reasoning_effort: 'none' as const }
-            : {}),
+          ...(this.omitReasoningEffort
+            ? {}
+            : allowsReasoningOff(model)
+              ? { reasoning_effort: 'none' as const }
+              : {}),
           ...(typeof request.temperature === 'number'
             ? { temperature: request.temperature }
             : {}),
@@ -94,9 +109,11 @@ export class OpenAIProvider implements LLMProvider {
           tools: buildTools(request),
           tool_choice: buildToolChoice(request),
           max_completion_tokens: request.maxOutputTokens,
-          ...(allowsReasoningOff(model)
-            ? { reasoning_effort: 'none' as const }
-            : {}),
+          ...(this.omitReasoningEffort
+            ? {}
+            : allowsReasoningOff(model)
+              ? { reasoning_effort: 'none' as const }
+              : {}),
           stream: true,
           stream_options: { include_usage: true },
           ...(typeof request.temperature === 'number'

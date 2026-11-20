@@ -1,5 +1,7 @@
 import { isTauriRuntime, platform } from '../../platform';
 import type { ByokListedModel, ByokModelCatalogResponse } from '../../platform';
+import { readRelayBaseURL } from '../ai/relay-endpoint';
+import { byokKeychain } from '../byok-keychain';
 import { canUseByokProvider } from '../config';
 import { events } from '../events';
 import {
@@ -90,12 +92,41 @@ export function createByokModelList(
 
 export type ByokModelList = ReturnType<typeof createByokModelList>;
 
+/**
+ * Fork (relay): the relay's model list is read by the native host (relay
+ * gateways reject CORS preflights, and the key must not travel from JS), which
+ * serves `GET {baseURL}/models` with the `byok.relay` key. Only sanitized ids
+ * are projected; every capability field stays null (unknown, not unsupported).
+ */
+const RELAY_LIST_MAX_MODELS = 500;
+
+async function relayModelListSource(): Promise<ByokModelCatalogResponse> {
+  const baseURL = readRelayBaseURL();
+  if (!baseURL) throw new Error(MISSING_KEY);
+  if (!(await byokKeychain.has('relay'))) throw new Error(MISSING_KEY);
+  const response = await platform.relayApi.listModels(baseURL);
+  const models = response.models
+    .filter((entry) => entry.id.length > 0 && entry.id.length <= 200)
+    .slice(0, RELAY_LIST_MAX_MODELS)
+    .map((entry) => ({
+      id: entry.id,
+      displayName: null,
+      created: null,
+      contextWindow: null,
+      maxOutputTokens: null,
+      adaptiveThinking: null,
+      efforts: null,
+      defaultEffort: null,
+    }));
+  return { models };
+}
+
 export const byokModelLists: Readonly<Record<ByokAgentProviderId, ByokModelList>> = Object.freeze(
   Object.fromEntries(BYOK_MODEL_LIST_PROVIDERS.map((provider) => [
     provider,
     createByokModelList(
       provider,
-      (id) => platform.byokModels.list(id),
+      (id) => (id === 'relay' ? relayModelListSource() : platform.byokModels.list(id)),
       setByokModelCatalog,
       () => isTauriRuntime() && canUseByokProvider(),
     ),

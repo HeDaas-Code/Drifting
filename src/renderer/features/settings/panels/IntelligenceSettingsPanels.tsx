@@ -9,6 +9,9 @@ import {
 import { speechKeychain } from '../../../lib/speech/speech-credentials';
 import { testByokProviderConnection } from '../../../lib/ai/test-provider-connection';
 import { readEnvApiKey } from '../../../lib/ai/credentials/env';
+import { readRelayBaseURL, writeRelayBaseURL } from '../../../lib/ai/relay-endpoint';
+import { byokModelLists } from '../../../lib/agent/byok-model-catalog';
+import { agentProviderOption } from '../../../lib/agent/runtime/agent-provider-contract';
 import { events } from '../../../lib/events';
 import { useSettingsStore } from '../../../store/settings-store';
 import {
@@ -225,6 +228,196 @@ function ProviderRow({
                 {t('settings.common.disconnect')}
               </SettingsButton>
             )}
+          </>
+        ) : (
+          <SettingsButton variant="primary" size="sm" onClick={startEditing}>
+            {t('settings.common.connect')}
+          </SettingsButton>
+        )
+      }
+    />
+  );
+}
+
+/**
+ * Fork: the OpenAI-compatible relay (中转站) row. The base URL is a
+ * non-secret localStorage setting (`lib/ai/relay-endpoint.ts`); the key is a
+ * Keychain entry (`byok.relay`). Editing the URL never touches the stored key,
+ * and the connectivity test reads both, exactly like the Agent does.
+ */
+function RelayProviderRow({ credentialsActive }: { credentialsActive: boolean }) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+  const [draftURL, setDraftURL] = useState('');
+  const [draftKey, setDraftKey] = useState('');
+  const [urlError, setUrlError] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [baseURL, setBaseURL] = useState('');
+  const [loading, setLoading] = useState(true);
+  const agentProvider = useSettingsStore((state) => state.agentProvider);
+  const agentModel = useSettingsStore((state) => state.agentModel);
+
+  useEffect(() => {
+    if (!credentialsActive) return;
+    let cancelled = false;
+    setBaseURL(readRelayBaseURL());
+    void byokKeychain
+      .has('relay')
+      .then((value) => {
+        if (!cancelled) setConnected(value);
+      })
+      .catch(() => {
+        if (!cancelled) setConnected(false);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    // Fork (relay): warm the endpoint's model list so the connectivity test
+    // has a model to use even before the composer menu was ever opened.
+    void byokModelLists.relay.refresh().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [credentialsActive]);
+
+  const [testState, setTestState] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
+  const [testMsg, setTestMsg] = useState('');
+
+  const testConnection = async () => {
+    if (!connected) return;
+    setTestState('testing');
+    setTestMsg('');
+    try {
+      // The composer's current model when it points at the relay; otherwise
+      // the first model the relay's own list offers, refreshing the list
+      // first so a freshly saved URL/key is honored.
+      let model = agentProvider === 'relay' ? agentModel.trim() : '';
+      if (!model) {
+        await byokModelLists.relay.refresh(true);
+        model = agentProviderOption('relay').models[0]?.value ?? '';
+      }
+      if (!model) {
+        setTestState('fail');
+        setTestMsg(t('settings.relayProvider.needModel'));
+        return;
+      }
+      await testByokProviderConnection('relay', {
+        model,
+        signal: new AbortController().signal,
+      });
+      setTestState('ok');
+    } catch (error) {
+      setTestState('fail');
+      setTestMsg(
+        (error as { kind?: string })?.kind === 'auth'
+          ? t('settings.byokProvider.invalidKey')
+          : t('settings.byokProvider.requestFailed'),
+      );
+    }
+  };
+
+  // Fork (relay): explicit re-fetch of the endpoint's /models list, with a
+  // count confirmation so a wrong URL or key is visible right here.
+  const [refreshState, setRefreshState] = useState<'idle' | 'refreshing' | 'done'>('idle');
+  const [refreshMsg, setRefreshMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+
+  const refreshModels = async () => {
+    if (!connected || refreshState === 'refreshing') return;
+    setRefreshState('refreshing');
+    setRefreshMsg(null);
+    await byokModelLists.relay.refresh(true).catch(() => undefined);
+    const count = agentProviderOption('relay').models.length;
+    if (count > 0) {
+      setRefreshMsg({ tone: 'ok', text: t('settings.relayProvider.modelsFetched', { count: String(count) }) });
+    } else {
+      setRefreshMsg({ tone: 'error', text: t('settings.relayProvider.refreshEmpty') });
+    }
+    setRefreshState('done');
+  };
+
+  const save = async () => {
+    const url = writeRelayBaseURL(draftURL);
+    if (!url) {
+      setUrlError(true);
+      return;
+    }
+    setUrlError(false);
+    setBaseURL(url);
+    const key = draftKey.trim();
+    if (key) {
+      await byokKeychain.set('relay', key);
+      setConnected(true);
+    }
+    setDraftURL('');
+    setDraftKey('');
+    setEditing(false);
+    events.emit('byok:keys-changed');
+  };
+
+  const disconnect = async () => {
+    await byokKeychain.clear('relay');
+    setConnected(false);
+    events.emit('byok:keys-changed');
+  };
+
+  const startEditing = () => {
+    setDraftURL('');
+    setDraftKey('');
+    setUrlError(false);
+    setEditing(true);
+  };
+
+  return (
+    <ProviderShell
+      name={t('settings.relayProvider.name')}
+      desc={t('settings.relayProvider.desc')}
+      live={connected}
+      source={connected ? 'Keychain' : t('settings.byokProvider.notConnected')}
+      detail={connected && baseURL ? <span className="set-provider-line__src">{baseURL}</span> : undefined}
+      actions={
+        loading ? null : editing ? (
+          <>
+            <SettingsField
+              mono
+              small
+              style={{ width: 320 }}
+              placeholder={t('settings.relayProvider.urlPlaceholder')}
+              aria-label={t('settings.relayProvider.urlLabel')}
+              value={draftURL}
+              onChange={(event) => setDraftURL(event.target.value)}
+              autoFocus
+            />
+            <KeyField name={t('settings.relayProvider.name')} value={draftKey} onChange={setDraftKey} />
+            <SettingsButton variant="primary" onClick={save}>
+              {t('settings.common.save')}
+            </SettingsButton>
+            <SettingsButton variant="ghost" onClick={startEditing}>
+              {t('settings.common.cancel')}
+            </SettingsButton>
+            {urlError && <ProviderResult tone="error">{t('settings.relayProvider.invalidURL')}</ProviderResult>}
+          </>
+        ) : connected ? (
+          <>
+            <SettingsButton size="sm" onClick={testConnection} disabled={testState === 'testing'}>
+              {testState === 'testing'
+                ? t('settings.byokProvider.testing')
+                : t('settings.common.test_connection')}
+            </SettingsButton>
+            <SettingsButton size="sm" onClick={refreshModels} disabled={refreshState === 'refreshing'}>
+              {refreshState === 'refreshing'
+                ? t('settings.relayProvider.refreshing')
+                : t('settings.relayProvider.refreshModels')}
+            </SettingsButton>
+            <SettingsButton variant="ghost" size="sm" onClick={startEditing}>
+              {t('settings.byokProvider.editKey')}
+            </SettingsButton>
+            {testState === 'ok' && <ProviderResult tone="ok">{t('settings.byokProvider.available')}</ProviderResult>}
+            {testState === 'fail' && <ProviderResult tone="error">{testMsg}</ProviderResult>}
+            {refreshMsg && <ProviderResult tone={refreshMsg.tone}>{refreshMsg.text}</ProviderResult>}
+            <span style={{ flex: 1 }} />
+            <SettingsButton variant="danger" size="sm" onClick={disconnect}>
+              {t('settings.common.disconnect')}
+            </SettingsButton>
           </>
         ) : (
           <SettingsButton variant="primary" size="sm" onClick={startEditing}>
@@ -520,6 +713,7 @@ export function ModelsPanel({
           name="OpenAI"
           desc={t('settings.models.providers.openai')}
         />
+        <RelayProviderRow credentialsActive={credentialsActive} />
         <ChatGptSubscriptionRow credentialsActive={credentialsActive} />
       </div>
       <div className="set-sec">
