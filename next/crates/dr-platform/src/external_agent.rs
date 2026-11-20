@@ -268,6 +268,8 @@ mod tests {
     use super::*;
     #[test]
     fn platforms_use_distinct_session_prompt_and_cancel_methods() {
+        let directory = tempfile::tempdir().unwrap();
+        let cwd = directory.path().to_str().unwrap();
         let mcp = McpCommand {
             command: "/synthetic/drifting".into(),
             args: vec!["--mcp".into()],
@@ -287,7 +289,7 @@ mod tests {
             ),
         ] {
             let wire = Wire { platform };
-            assert_eq!(wire.open("/synthetic", None, &mcp).unwrap()["method"], open);
+            assert_eq!(wire.open(cwd, None, &mcp).unwrap()["method"], open);
             assert_eq!(wire.prompt(4, "s", "hello")["method"], prompt);
             assert_eq!(wire.cancel(5, "s", Some("turn")).unwrap()["method"], stop);
             assert!(wire.open("relative", None, &mcp).is_err());
@@ -295,6 +297,8 @@ mod tests {
     }
     #[test]
     fn resume_and_mcp_configuration_are_not_global_config_edits() {
+        let directory = tempfile::tempdir().unwrap();
+        let cwd = directory.path().to_str().unwrap();
         let wire = Wire {
             platform: ExternalPlatform::Codex,
         };
@@ -302,7 +306,7 @@ mod tests {
             command: "/synthetic/drifting".into(),
             args: vec!["--mcp".into()],
         };
-        let request = wire.open("/synthetic", Some("old-thread"), &mcp).unwrap();
+        let request = wire.open(cwd, Some("old-thread"), &mcp).unwrap();
         assert_eq!(request["method"], "thread/resume");
         assert_eq!(request["params"]["threadId"], "old-thread");
         assert_eq!(
@@ -313,7 +317,7 @@ mod tests {
             platform: ExternalPlatform::DeepseekHarness,
         };
         assert_eq!(
-            acp.open("/synthetic", Some("s"), &mcp).unwrap()["method"],
+            acp.open(cwd, Some("s"), &mcp).unwrap()["method"],
             "session/load"
         );
     }
