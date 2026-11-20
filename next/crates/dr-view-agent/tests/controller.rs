@@ -731,8 +731,18 @@ fn stop_revokes_continuation_before_a_held_slice_returns() {
         .unwrap();
     wait(|| !driver.requests().is_empty());
     let stop = controller.stop_conversation(&conversation);
-    send.send(()).unwrap();
-    block_on(stop).ok();
+    assert!(
+        !controller.task_view(&session).unwrap().unwrap().authorized,
+        "Stop revokes continuation synchronously, before the held driver returns"
+    );
+    // Stop can cancel and drop the waiting driver before this thread releases
+    // it. Either ordering is valid; the receipt and settled run below decide
+    // whether stopping succeeded, not the lifetime of this test channel.
+    let _ = send.send(());
+    match block_on(stop) {
+        Ok(()) | Err(Error::Closed) => {}
+        Err(error) => panic!("unexpected stop outcome: {error}"),
+    }
     wait(|| controller.active_count() == 0);
     assert_eq!(driver.requests().len(), 1);
     assert!(!controller.task_view(&session).unwrap().unwrap().authorized);
