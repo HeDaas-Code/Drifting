@@ -101,7 +101,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked --keep-going -- -D warnings
       - name: Check stop authorization before the full suite
         if: ${{ !cancelled() }}
-        run: cargo test --locked -p dr-view-agent --test controller stop_revokes_continuation_before_a_held_slice_returns
+        run: cargo test --workspace --locked --test controller stop_revokes_continuation_before_a_held_slice_returns
       - if: ${{ !cancelled() }}
         run: cargo test --workspace --locked --no-fail-fast
       - if: ${{ !cancelled() }}
