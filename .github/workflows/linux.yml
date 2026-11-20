@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: linux-${{ github.ref }}
+  group: linux-${{ inputs.evidence_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
