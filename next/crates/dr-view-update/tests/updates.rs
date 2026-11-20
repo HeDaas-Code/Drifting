@@ -110,7 +110,12 @@ impl Env {
     /// The manifest offers `version` with `build` as its artifact, served
     /// the way `serve` says.
     fn publish(&self, version: &str, build: &Build, serve: impl FnOnce(Vec<u8>) -> Serve) {
-        let target = Target::current().unwrap().key();
+        let target = Target {
+            os: "darwin",
+            arch: "aarch64",
+            bundle: "app",
+        }
+        .key();
         let manifest = serde_json::json!({
             "version": version,
             "notes": "合成的测试版本",
@@ -127,7 +132,11 @@ impl Env {
             manifest_url,
             public_key: self.key.public_key(),
             current_version: v(current),
-            target: Target::current().unwrap(),
+            target: Target {
+                os: "darwin",
+                arch: "aarch64",
+                bundle: "app",
+            },
             url_policy: UrlPolicy::AllowLocal,
             bundle_id: DEV.into(),
         };
