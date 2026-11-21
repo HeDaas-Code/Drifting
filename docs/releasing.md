@@ -16,9 +16,9 @@ alpha.11 及以后的 0.1 就会被交给新版。所以 **0.1 的 Release 永�
 
 | 项 | 值 |
 | --- | --- |
-| 平台 | macOS 13+，Apple Silicon（`aarch64-apple-darwin`）；Windows 10/11 x64 与 ARM64（预览，见 [windows.md](windows.md)） |
+| 平台 | macOS 13+，Apple Silicon（`aarch64-apple-darwin`）；Windows 10/11 x64 与 ARM64（预览，见 [windows.md](windows.md)）；Linux x86_64（见 [linux.md](linux.md)） |
 | 构建机 | GitHub `macos-26`，Xcode 26.6（macOS 26 SDK）。用更早的 SDK 编译，新系统会给 App 画旧样式的标题栏，红绿灯比 App 设定的位置偏下 |
-| 打包 | `Drifting_<版本号>_macos_arm64.dmg`（首次安装）、`.app.tar.gz` + `.sig`（自动更新）、`latest.json`、`SHA256SUMS.txt`、`sbom.spdx.json`；Windows 为 `Drifting_<版本号>_windows_<x64\|arm64>-setup.exe` + `.sig`（安装与自动更新同一个文件） |
+| 打包 | `Drifting_<版本号>_macos_arm64.dmg`（首次安装）、`.app.tar.gz` + `.sig`（自动更新）、`latest.json`、`SHA256SUMS.txt`、`sbom.spdx.json`；Windows 为 `Drifting_<版本号>_windows_<x64\|arm64>-setup.exe` + `.sig`；Linux 为 `Drifting_<版本号>_linux_x86_64.AppImage`、`.deb`，以及 AppImage 的 `.tar.gz` + `.sig` 自动更新包 |
 | 图标 | macOS 打包前从 Icon Composer 源文件编译 `Assets.car`，支持浅色、深色、Clear 和 Tinted；旧系统保留 `.icns`。构建产物与 DMG 内的 App 都检查图标资产，见 `docs/qa/macos-app-icon.md` |
 | 签名 | Developer ID Application 证书；App 和外层的 DMG 都用 App Store Connect API Key 公证并 staple（DMG 那一步在 Tauri 构建之后单独做）。Windows 安装包暂不做 Authenticode 签名，首次运行 SmartScreen 会提示；自动更新仍由同一把更新密钥签名校验 |
 | Hosted | 连接 `vars.DRIFTING_HOSTED_ORIGIN`，开放注册；注册页链接 `https://drifting.cc/terms` 与 `https://drifting.cc/privacy` |
@@ -80,8 +80,10 @@ alpha.11 及以后的 0.1 就会被交给新版。所以 **0.1 的 Release 永�
 5. 等 **Release** 工作流结束。`verify` 失败不会构建；`build` 会核对签名、Gatekeeper、
    公证 staple 和 DMG 挂载后的 App。`build-windows` 在 `windows-latest` 和
    `windows-11-arm` 上各出一个安装包，并在构建机上静默安装、打开，20 秒后 App 仍在运行才上传；Mac 草稿建好后，`release-windows` 把它们传进同一个
-   草稿，并把 `windows-x86_64`、`windows-aarch64` 写进 `latest.json`。Windows 构建失败时
-   Mac 草稿照样完整，可以只重跑失败的任务，或先发只有 Mac 的版本。
+   草稿，并把 `windows-x86_64`、`windows-aarch64` 写进 `latest.json`。`build-linux` 在
+   Ubuntu 24.04 上生成 AppImage、DEB 和签名的 AppImage 更新包，随后由同一个任务把
+   `linux-x86_64` 写进 `latest.json`。Windows 或 Linux 构建失败时 Mac 草稿照样完整，
+   可以只重跑失败的平台任务，或先发不含失败平台的版本。
 6. 在 GitHub 打开草稿 Release，下载 DMG，在一台干净的 Mac 上走一遍下面的冒烟检查。
 7. 没问题就点 **Publish release**。已安装的 App 在下次启动时、开着的 App 在 3 小时左右内收到更新（也可在 设置 › 更新 里手动检查）。
 8. Publish 之后重建并部署官网：首页的下载按钮按文件名直接下载最新 Release 的
@@ -104,6 +106,8 @@ alpha.11 及以后的 0.1 就会被交给新版。所以 **0.1 的 Release 永�
   “已更新到”通知，项目、素材、账号和模型密钥都还在。
 - Windows：在 Windows 11（ARM 虚拟机也可以）装对应的 `-setup.exe`，不需要管理员权限；
   按 [windows.md](windows.md) 的手动验收清单走一遍，至少包括微软拼音输入、登录、退出重开。
+- Linux：在 Ubuntu 24.04 或兼容发行版上运行 AppImage，确认首次启动、写入、退出重开和
+  Secret Service 密钥存储；再用 DEB 包安装一次。Linux 不能导入 HEIC、HEIF 或 AVIF。
 
 ## 检查脚本
 

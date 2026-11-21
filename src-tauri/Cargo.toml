@@ -83,9 +83,8 @@ rustybuzz = "0.20.1"
 unicode-linebreak = "0.1.5"
 tauri-plugin-single-instance = { version = "2.4.3", features = ["deep-link"] }
 # Without the default `zip` feature: Windows updates are signed NSIS `.exe`
-# installers (createUpdaterArtifacts = true), never v1 `.nsis.zip` bundles,
-# and no Linux build ships. The feature pinned zip 4, whose extraction has
-# open advisories.
+# installers (createUpdaterArtifacts = true), never v1 `.nsis.zip` bundles.
+# The feature pinned zip 4, whose extraction has open advisories.
 tauri-plugin-updater = { version = "2.10.1", default-features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]

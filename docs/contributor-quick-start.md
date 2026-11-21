@@ -14,10 +14,12 @@ own providers only when developing optional network features.
 - On Windows: the MSVC Rust toolchain, Visual Studio Build Tools with the C++
   workload and WebView2; no certificate. See
   [Developing on Windows](windows.md#developing-on-windows).
+- On Linux: the GTK 3, WebKitGTK 4.1, Libsecret and AppImage build packages
+  listed in [Linux](linux.md); no signing certificate is needed.
 
-The supported release target is macOS 13+ on Apple Silicon; Windows 10/11 (x64
-and ARM64) has [preview builds](windows.md). Windows runs the development app
-and the source checks; Linux and Intel Macs can run source checks.
+The supported release targets are macOS 13+ on Apple Silicon, Windows 10/11
+(x64 and ARM64, preview), and Linux x86_64 (AppImage and DEB). Intel Macs can
+run source checks but do not have a release bundle.
 
 ## Set up macOS signing once
 

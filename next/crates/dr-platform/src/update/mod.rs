@@ -433,7 +433,12 @@ mod tests {
     }
 
     fn manifest_json(release: &Release, url: &str) -> String {
-        let target = Target::current().unwrap().key();
+        let target = Target {
+            os: "darwin",
+            arch: "aarch64",
+            bundle: "app",
+        }
+        .key();
         serde_json::json!({
             "version": release.offered,
             "notes": "合成的测试版本",
@@ -470,7 +475,11 @@ mod tests {
                 manifest_url,
                 public_key: key.public_key(),
                 current_version: Version::parse(current).unwrap(),
-                target: Target::current().unwrap(),
+                target: Target {
+                    os: "darwin",
+                    arch: "aarch64",
+                    bundle: "app",
+                },
                 url_policy: UrlPolicy::AllowLocal,
                 bundle_id: DEV.into(),
             },

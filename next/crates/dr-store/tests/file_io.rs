@@ -164,3 +164,16 @@ fn windows_write_through_moves_replace_only_when_asked() {
     windows_move_write_through(&d1, &dir.path().join(".d1.deleting"), false).unwrap();
     assert!(dir.path().join(".d1.deleting/inner").is_dir());
 }
+
+#[cfg(windows)]
+#[test]
+fn windows_atomic_replacement_supports_asset_paths_beyond_max_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let parent = dir.path().join("b".repeat(128)).join("a".repeat(128));
+    let path = parent.join("source.abcdefghijklmnop");
+    assert!(path.as_os_str().len() > 260);
+    atomic_write(&path, b"first").unwrap();
+    atomic_write(&path, b"replacement").unwrap();
+    assert_eq!(fs::read(&path).unwrap(), b"replacement");
+    assert_eq!(fs::read_dir(&parent).unwrap().count(), 1);
+}

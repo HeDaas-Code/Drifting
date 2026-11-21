@@ -277,6 +277,13 @@ mod tests {
 
     #[test]
     fn this_platform_has_a_target() {
+        if cfg!(target_os = "linux") {
+            assert!(
+                Target::current().is_none(),
+                "Linux Alpha uses manual package installation"
+            );
+            return;
+        }
         let target = Target::current().unwrap();
         assert!(["darwin", "windows"].contains(&target.os));
         assert!(["aarch64", "x86_64"].contains(&target.arch));

@@ -4,10 +4,10 @@
 
 **兼具 Markdown 编辑器的轻快、经典写作工坊的创作框架，以及贯穿全书的 AI Agent，助你写出人生第一部畅销书。**
 
-[下载 Mac 与 Windows 版](https://github.com/chihumyum/Drifting/releases/latest) ·
+[下载 Mac、Windows 与 Linux 版](https://github.com/chihumyum/Drifting/releases/latest) ·
 [官网](https://drifting.cc/zh) · [文档](docs/README.md)
 
-macOS 13+ · Windows 10/11 · 早期开发中
+macOS 13+ · Windows 10/11 · Linux x86_64 · 早期开发中
 
 [English](README.md) | 简体中文
 
@@ -19,7 +19,7 @@ macOS 13+ · Windows 10/11 · 早期开发中
 
 ![要素全景：人物、地点和设定，以及它们之间的关系图](docs/screenshots/zh-CN/elements.webp)
 
-Drifting 是一个开源、本地优先的长篇小说写作软件，支持 Mac 与 Windows。写起来像 Markdown 编辑器；
+Drifting 是一个开源、本地优先的长篇小说写作软件，支持 Mac、Windows 与 Linux。写起来像 Markdown 编辑器；
 像 Scrivener 这类传统写作软件那样，用章节和大纲、人物和世界设定、故事线和资料把一本书搭起来；
 还有一个能读、能查、能动手修改整个项目的 AI Agent。
 
@@ -34,6 +34,8 @@ Drifting 是一个开源、本地优先的长篇小说写作软件，支持 Mac 
 - **Windows**（预览版）：Windows 10、11，下载 `Drifting_<版本号>_windows_x64-setup.exe`，
   ARM 处理器的电脑下载 `…_arm64-setup.exe`，运行即可安装，不需要管理员权限。见
   [Windows](docs/windows.md)。
+- **Linux**：Linux x86_64，下载便携的 `.AppImage`，或 Debian/Ubuntu 使用的 `.deb` 包。见
+  [Linux](docs/linux.md)。
 
 有新版本时 App 会提示，何时安装由你决定。第一次打开会带两本示例作品：《傲慢与偏见》，和写到一半、可以接着写的《阿Q正传》，可以随便看，也可以删掉。
 
@@ -83,12 +85,12 @@ Drifting 是一个开源、本地优先的长篇小说写作软件，支持 Mac 
 ## 和 Scrivener、Novelcrafter 的区别
 
 Scrivener 是老牌的桌面写作软件，没有内置 AI；Novelcrafter 是带 AI 的网页写作工具，需要联网。
-Drifting 保留了前者的脚手架，加上一个照看整本书的 Agent，做成一个免费、开源的 Mac 与 Windows 应用，
+Drifting 保留了前者的脚手架，加上一个照看整本书的 Agent，做成一个免费、开源的 Mac、Windows 与 Linux 应用，
 稿件以 Markdown 文件的形式存在你的电脑上。
 
 | | Drifting | Scrivener | Novelcrafter |
 | --- | --- | --- | --- |
-| 形式 | Mac 与 Windows 应用 | Mac、Windows、iOS 应用 | 网页应用 |
+| 形式 | Mac、Windows 与 Linux 应用 | Mac、Windows、iOS 应用 | 网页应用 |
 | 价格 | 免费 | 一次性购买 | 订阅 |
 | 源码 | 开源（AGPL） | 不公开 | 不公开 |
 | 离线 | 可以 | 可以 | 需要联网 |
