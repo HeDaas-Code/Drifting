@@ -1,11 +1,12 @@
 name: Desktop Builds
 
-# Desktop preview builds validate Linux and Windows and retain installable
-# artifacts for manual acceptance before a tagged release.
+# Linux native tests, preview installers and manual evidence refresh.
 on:
-  pull_request:
-  push:
-    branches: ['main', 'codex/linux-support', 'linux/**']
+  workflow_call:
+    inputs:
+      build:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       evidence_ref:
@@ -16,69 +17,10 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: linux-${{ inputs.evidence_ref || github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  windows-build:
-    if: ${{ !inputs.evidence_ref }}
-    name: windows / x64 installer
-    runs-on: windows-latest
-    timeout-minutes: 90
-    env:
-      NODE_OPTIONS: --max-old-space-size=4096
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 22.23.1
-      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
-        with:
-          toolchain: 1.96.0
-          targets: x86_64-pc-windows-msvc
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-        with:
-          workspaces: src-tauri
-          key: x86_64-pc-windows-msvc
-      - run: corepack enable
-      - run: corepack prepare pnpm@10.17.1 --activate
-      - run: pnpm install --frozen-lockfile
-      - name: Build the Windows x64 installer
-        run: node scripts/run-desktop-tauri.mjs build --target x86_64-pc-windows-msvc --bundles nsis
-      - name: Install and smoke test Drifting
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe' | Select-Object -First 1
-          if (-not $installer) { throw 'NSIS installer was not produced' }
-          Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait
-          $app = Join-Path $env:LOCALAPPDATA 'Drifting\drifting.exe'
-          if (-not (Test-Path $app)) { throw "the installer did not install $app" }
-          $stderr = Join-Path $env:RUNNER_TEMP 'drifting-stderr.txt'
-          $process = Start-Process -FilePath $app -RedirectStandardError $stderr -PassThru
-          Start-Sleep -Seconds 20
-          if ($process.HasExited) {
-            Get-Content $stderr -ErrorAction SilentlyContinue
-            throw "Drifting exited at start with code $($process.ExitCode)"
-          }
-          Stop-Process -Id $process.Id -Force
-      - name: Collect Windows artifact
-        shell: pwsh
-        run: |
-          $version = node -p "require('./package.json').version"
-          $installer = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe' | Select-Object -First 1
-          New-Item -ItemType Directory -Force -Path out/windows | Out-Null
-          Copy-Item $installer.FullName "out/windows/Drifting_${version}_windows_x64-setup.exe"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: drifting-windows-x64-${{ github.sha }}
-          path: out/windows/*.exe
-          if-no-files-found: error
-          retention-days: 14
-
   build:
     if: ${{ !inputs.evidence_ref }}
-    name: linux / native build
+    name: linux / ${{ (inputs.build || github.event_name == 'workflow_dispatch') && 'build' || 'tests' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -110,22 +52,31 @@ jobs:
           sudo apt-get install --yes \
             build-essential file libayatana-appindicator3-dev libgtk-3-dev \
             libsecret-1-dev librsvg2-dev libwebkit2gtk-4.1-dev patchelf pkg-config \
-            xvfb
+            desktop-file-utils xauth xdg-utils xvfb
       - run: corepack enable
       - run: corepack prepare pnpm@10.17.1 --activate
       - run: pnpm install --frozen-lockfile
-      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
-      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
-      - run: pnpm typecheck
-      - run: pnpm exec vite build --config vite.renderer.config.ts
-      - name: Build AppImage and DEB packages
+      - if: ${{ !inputs.build }}
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - if: ${{ !inputs.build }}
+        run: mkdir -p dist && printf '<!doctype html>\n' > dist/index.html
+      - if: ${{ !inputs.build }}
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
+      - if: ${{ !inputs.build }}
+        run: pnpm typecheck
+      - if: ${{ !inputs.build }}
+        run: pnpm exec vite build --config vite.renderer.config.ts
+      - if: ${{ inputs.build || github.event_name == 'workflow_dispatch' }}
+        name: Build AppImage and DEB packages
         run: pnpm tauri:build -- --bundles appimage,deb
-      - name: Smoke test the AppImage
+      - if: ${{ inputs.build || github.event_name == 'workflow_dispatch' }}
+        name: Smoke test the AppImage
         shell: bash
         run: |
           APPIMAGE=$(find src-tauri/target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' -print -quit)
           test -n "$APPIMAGE"
           chmod +x "$APPIMAGE"
+          export APPIMAGE_EXTRACT_AND_RUN=1
           LOG="$RUNNER_TEMP/drifting-linux.log"
           timeout --signal=TERM 20s xvfb-run -a env WEBKIT_DISABLE_COMPOSITING_MODE=1 "$APPIMAGE" >"$LOG" 2>&1 &
           PID=$!
@@ -136,7 +87,8 @@ jobs:
           fi
           kill "$PID" 2>/dev/null || true
           wait "$PID" 2>/dev/null || true
-      - name: Collect Linux artifacts
+      - if: ${{ inputs.build || github.event_name == 'workflow_dispatch' }}
+        name: Collect Linux artifacts
         shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -146,7 +98,8 @@ jobs:
           mkdir -p out/linux
           cp "$APPIMAGE" "out/linux/Drifting_${VERSION}_linux_x86_64.AppImage"
           cp "$DEB" "out/linux/Drifting_${VERSION}_linux_x86_64.deb"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - if: ${{ inputs.build || github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: drifting-linux-${{ github.sha }}
           path: out/linux/*

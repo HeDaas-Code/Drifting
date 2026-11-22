@@ -1,11 +1,8 @@
 name: Release
 
-# Pushing tag v<version> builds a signed, notarized macOS release as a draft.
-# Publishing the draft makes it the latest release, which is what the app's
-# updater offers (docs/releasing.md).
+# Only the main push pipeline calls this workflow after cloud validation.
 on:
-  push:
-    tags: ['v*']
+  workflow_call:
 
 permissions:
   contents: read
@@ -16,6 +13,7 @@ concurrency:
 
 jobs:
   verify:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: macos-26
     timeout-minutes: 60
     env:
@@ -42,7 +40,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@10.17.1 --activate
       - run: pnpm install --frozen-lockfile
-      - run: node scripts/check-release.mjs "${GITHUB_REF_NAME}"
+      - run: node scripts/check-release.mjs "v$(node -p 'require("./package.json").version')"
       - run: pnpm ci:contract:check
       - run: pnpm public:check
       - run: node scripts/check-macos-icon.mjs --check
@@ -58,8 +56,6 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 90
     environment: release
-    permissions:
-      contents: write
     env:
       NODE_OPTIONS: --max-old-space-size=4096
       # Built against the macOS 26 SDK, as the app is developed: macOS draws
@@ -75,7 +71,6 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -177,29 +172,21 @@ jobs:
           UPDATE_NAME=$(basename "$(find "$RELEASE_DIR" -maxdepth 1 -name '*.app.tar.gz' -print -quit)")
           node scripts/create-update-manifest.mjs \
             --version "$VERSION" \
-            --url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${UPDATE_NAME}" \
+            --url "https://github.com/${GITHUB_REPOSITORY}/releases/download/main-${GITHUB_SHA}/${UPDATE_NAME}" \
             --signature-file "$RELEASE_DIR/$UPDATE_NAME.sig" \
             --notes-file "docs/releases/${VERSION}.md" \
             --output "$RELEASE_DIR/latest.json"
           node scripts/generate-release-sbom.mjs "$RELEASE_DIR/sbom.spdx.json"
           (cd "$RELEASE_DIR" && shasum -a 256 ./* > SHA256SUMS.txt)
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "RELEASE_DIR=$RELEASE_DIR" >> "$GITHUB_ENV"
-      - name: Create draft release
-        run: |
-          NOTES_FILE="docs/releases/${VERSION}.md"
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" = "true"
-            gh release upload "$GITHUB_REF_NAME" "$RELEASE_DIR"/* --clobber
-            gh release edit "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE" --title "Drifting ${VERSION}" --draft
-          else
-            gh release create "$GITHUB_REF_NAME" "$RELEASE_DIR"/* --verify-tag --draft --title "Drifting ${VERSION}" --notes-file "$NOTES_FILE"
-          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-release
+          path: ${{ env.RELEASE_DIR }}/*
+          if-no-files-found: error
+          retention-days: 7
 
-# Windows installers and Linux packages join the draft only after the macOS
-# build has created it, so a platform build failure never holds back the macOS
-# release. Windows installers are not Authenticode-signed yet: SmartScreen
-# warns on first launch.
+  # Windows installers are not Authenticode-signed yet.
   build-windows:
     name: build (windows ${{ matrix.arch }})
     needs: verify
@@ -336,8 +323,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  release-windows:
-    name: add Windows and Linux to the draft release
+  publish:
+    name: Publish all desktop platforms
     needs: [build, build-windows, build-linux]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -346,22 +333,28 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
+      BEFORE_SHA: ${{ github.event.before }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22.23.1
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          pattern: '*-release*'
+          pattern: '{windows,linux}-release*'
           path: windows-release
           merge-multiple: true
-      - name: Add the installers and desktop platforms to latest.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: macos-release
+          path: release-manifest
+      - name: Assemble the full release and publish
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" = "true"
-          gh release download "$GITHUB_REF_NAME" -p latest.json -p SHA256SUMS.txt -D release-manifest
-          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          TAG="main-$GITHUB_SHA"
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/main-${GITHUB_SHA}"
           for pair in x64:windows-x86_64 arm64:windows-aarch64; do
             ARCH=${pair%%:*}
             PLATFORM=${pair##*:}
@@ -376,9 +369,22 @@ jobs:
           node scripts/merge-update-manifest.mjs --manifest release-manifest/latest.json \
             --platform linux-x86_64 --url "$BASE/$LINUX_NAME" \
             --signature-file "windows-release/$LINUX_NAME.sig" --version "$VERSION"
-          # latest.json changed above: replace its checksum, then add the installers'.
-          grep -v ' \./latest\.json$' release-manifest/SHA256SUMS.txt > release-manifest/SHA256SUMS.next
-          (cd release-manifest && sha256sum ./latest.json) >> release-manifest/SHA256SUMS.next
-          (cd windows-release && sha256sum ./*) >> release-manifest/SHA256SUMS.next
-          mv release-manifest/SHA256SUMS.next release-manifest/SHA256SUMS.txt
-          gh release upload "$GITHUB_REF_NAME" windows-release/* release-manifest/latest.json release-manifest/SHA256SUMS.txt --clobber
+          mv windows-release/* release-manifest/
+          node scripts/write-release-commits.mjs "$BEFORE_SHA" "$GITHUB_SHA" \
+            "docs/releases/${VERSION}.md" release-manifest/COMMITS.txt "$RUNNER_TEMP/release-notes.md"
+          rm release-manifest/SHA256SUMS.txt
+          (cd release-manifest && sha256sum ./* > "$RUNNER_TEMP/SHA256SUMS.txt")
+          mv "$RUNNER_TEMP/SHA256SUMS.txt" release-manifest/
+
+          if state=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null); then
+            # A rerun of an already-published commit leaves its assets intact.
+            if [[ "$state" == false ]]; then exit 0; fi
+            gh release upload "$TAG" release-manifest/* --clobber
+          else
+            gh release create "$TAG" release-manifest/* --target "$GITHUB_SHA" \
+              --draft --title "Drifting ${VERSION} (${GITHUB_SHA::12})" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          latest=false
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [[ "$main_sha" == "$GITHUB_SHA" ]]; then latest=true; fi
+          gh release edit "$TAG" --draft=false --latest="$latest" --notes-file "$RUNNER_TEMP/release-notes.md"

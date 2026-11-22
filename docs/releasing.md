@@ -1,11 +1,16 @@
 # 发布 Drifting
 
-正式版只通过 GitHub Releases 分发：推送 `v<版本号>` tag，`.github/workflows/release.yml`
-在 macOS 上构建、签名、公证，生成草稿 Release。作者检查草稿后点 **Publish**，
-它就成为最新 Release；已安装的 App 从
-`https://github.com/chihumyum/Drifting/releases/latest/download/latest.json` 发现它。
+普通 PR 合入长期开发分支 `next`。只有本仓库的 `next` 可以通过 PR 合入 `main`。
+每次 PR 更新都会执行 **Cloud tests**。全部通过后，**Cloud build** 生成 macOS、Windows、
+Linux 和 Next 编译产物，供下载验收。合入 `main` 后，GitHub Actions 在合并提交上
+重新执行检查和构建。发布任务会核对主线提交确实来自本仓库已合并的 `next → main` PR，
+并在签名产物、平台验证和校验清单齐备后自动发布。
 
-所以 **Publish 就是推送更新**。草稿、预发布（prerelease）都不会被已安装的 App 看到。
+Tauri 正式版使用 `main-<完整 SHA>` 标签，发布说明包含该次主线推送的提交信息。
+每次发布都附有 `COMMITS.txt`，记录完整 SHA、作者、提交者、日期和正文；超出
+GitHub 发布说明长度时，完整记录仍可从附件下载。相同源码重跑会复用发布标签。
+自动更新仍按应用版本比较，修改代码但维持原版本号会生成可下载的 Release，
+现有安装需要更高的应用版本才会收到更新。
 
 从 0.1.0-alpha.11 起，App 先试 `releases/latest/download/update.json`，拿不到（404）再读
 `latest.json`。`update.json` 只由新版（Rust 客户端 0.2）的 Release 提供，到时候装了
@@ -29,8 +34,14 @@ alpha.11 及以后的 0.1 就会被交给新版。所以 **0.1 的 Release 永�
 ## 一次性准备
 
 在仓库 **Settings › Secrets and variables › Actions** 里配置。`release` environment
-会在第一次运行时自动创建；可以在 **Settings › Environments › release** 加上
-“需要审核人”，让每次构建前都先等你批准。
+在 **Settings › Environments › release** 将允许部署的分支限定为 `main`。需要全自动发布时，
+该环境应允许主线任务自动进入，避免配置需要人工批准的部署门禁。
+
+在 **Settings › Rules › Rulesets** 导入
+[`main.json`](../.github/rulesets/main.json) 和 [`next.json`](../.github/rulesets/next.json)。
+启用后要求通过 `PR target`、`Cloud tests` 和 `Cloud build`，以合并提交保留完整历史，
+并限制删除和强制推送。保留 GitHub 仓库的合并提交选项，关闭自动删除合并后的分支。
+仓库内的规则集文件是管理员导入的配置，GitHub 不会随代码提交自动启用它们。
 
 ### Variables
 
@@ -63,7 +74,7 @@ alpha.11 及以后的 0.1 就会被交给新版。所以 **0.1 的 Release 永�
 
 ## 每次发布
 
-1. 在 `main` 上把 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`
+1. 如需向已安装客户端推送版本更新，先通过 PR 把 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`
    的版本改成同一个新版本号（如 `0.1.0-alpha.2`），并写好
    `docs/releases/<版本号>.md`。第一行 `# Drifting <版本号>` 之后的正文会原样显示在
    App 的更新提示和 设置 › 更新 里，写给用户看，保持简短。中英双语（2026-11-05 作者定）：先写中文条目和
@@ -76,24 +87,16 @@ alpha.11 及以后的 0.1 就会被交给新版。所以 **0.1 的 Release 永�
    `--readme` 则在 `out/screenshots/<版本号>/` 截中英文、浅色深色全部 12 张，不进仓库。
 3. 本地运行 `pnpm release:check v<版本号>`，再跑
    `pnpm lint`、`pnpm typecheck`、`pnpm test`。
-4. 推送提交和 tag：`git tag v<版本号> && git push origin main v<版本号>`。
-5. 等 **Release** 工作流结束。`verify` 失败不会构建；`build` 会核对签名、Gatekeeper、
-   公证 staple 和 DMG 挂载后的 App。`build-windows` 在 `windows-latest` 和
-   `windows-11-arm` 上各出一个安装包，并在构建机上静默安装、打开，20 秒后 App 仍在运行才上传；Mac 草稿建好后，`release-windows` 把它们传进同一个
-   草稿，并把 `windows-x86_64`、`windows-aarch64` 写进 `latest.json`。`build-linux` 在
-   Ubuntu 24.04 上生成 AppImage、DEB 和签名的 AppImage 更新包，随后由同一个任务把
-   `linux-x86_64` 写进 `latest.json`。Windows 或 Linux 构建失败时 Mac 草稿照样完整，
-   可以只重跑失败的平台任务，或先发不含失败平台的版本。
-6. 在 GitHub 打开草稿 Release，下载 DMG，在一台干净的 Mac 上走一遍下面的冒烟检查。
-7. 没问题就点 **Publish release**。已安装的 App 在下次启动时、开着的 App 在 3 小时左右内收到更新（也可在 设置 › 更新 里手动检查）。
-8. Publish 之后重建并部署官网：首页的下载按钮按文件名直接下载最新 Release 的
+4. 把改动合入 `next`；发版时提交 `next → main` 的 PR，等待 `Cloud build` 与其他必需检查。
+5. 合并后查看 **CI** 的发布任务。Tauri 由签名和公证后的 macOS 构建、Windows x64/ARM64
+   安装器、Linux AppImage/DEB 和各平台更新清单一并发布。任一平台失败时，先重试失败的任务。
+6. 发布后可下载 DMG 并执行下方人工冒烟检查。重建并部署官网时，首页的下载按钮按文件名下载最新 Release 的
    `Drifting_<版本号>_macos_arm64.dmg` 和 Windows 安装包，版本号取自 `package.json`。
    在 Drifting-Showcase 里运行
    `node <客户端>/scripts/design-assets/landing/build.mjs site`，跑它的测试后推送 main
    （推送就是部署）；见 `scripts/design-assets/landing/README.md`。
 
-发现问题时：草稿直接删掉、修好后用新版本号重新打 tag。已发布的版本不要改文件；
-要撤回就把它改回草稿，用户会停留在前一个已发布版本。
+发现问题时，通过正常 PR 修复，再合入主线发布。已发布的产物应保持可追溯。
 
 ## 冒烟检查
 
@@ -122,11 +125,10 @@ release 默认会剥离调试信息，而 Xcode 27 的工具链剥离后的过�
 之前就会失败。构建脚本和过程宏只在构建机上运行，不剥离它们不影响发出去的 App，App
 本身仍会剥离。
 
-## Next Alpha 手动发布（独立通道）
+## Next Alpha 自动预发布（独立通道）
 
 Next 使用独立的 **Next Release** 工作流（`.github/workflows/release-next.yml`），
-不走上面的 Tauri 发布、签名和自动更新通道。维护者选择源分支，手动点击
-**Run workflow**。准备任务串行预留 `0.2.0-alpha.N`：首次为 `alpha.1`；
+由 `main` 推送的 CI 调用，使用独立的安装包和版本号。准备任务串行预留 `0.2.0-alpha.N`：首次为 `alpha.1`；
 重试同一源码复用 `next-release/<版本>` 分支与发布提交，已发布的同一源码
 不再分配新号。预留分支保留用于审计，不要改写或删除。
 
@@ -146,11 +148,9 @@ Linux 任务产生 x86_64 AppImage 和 DEB。DEB 独立安装到
 linuxdeploy 打包。两种包都要在临时 X11 会话里出现可见窗口后才能上传。
 Windows x64 任务产生 NSIS 安装包，检查独立身份、随包字体、窗口启动、关窗和卸载。
 
-所有验证和平台打包任务成功后才创建或刷新 **draft + prerelease** 的 Release，
-上传三种安装包和 `SHA256SUMS.txt`。说明从开发基线 `c17f32bbc`（首次）或
-上一已发布的 `next-v0.2.0-alpha.N` 标签开始，按功能汇总标题、短 SHA 和准确
-比较范围，并列出源码提交与发布提交。维护者核对草稿与人工验收记录后自行点击
-**Publish release**；工作流不会代为发布。
+所有验证和平台打包任务成功后，工作流自动发布 **prerelease**。三个安装包、校验清单
+和完整提交记录 `COMMITS.txt` 会一起上传。发布说明保留按功能汇总、比较范围、源码提交和发布提交，
+并补充本次主线推送的完整提交信息。Next Alpha 不占用 Tauri 正式版的最新发布入口。
 
 本地验收：`python3 -m unittest discover -s next/script/tests -v` 验证编号、
 锁文件、说明以及本地 Git 远端预留／重试演练；actionlint 验证工作流结构，

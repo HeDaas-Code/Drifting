@@ -1,0 +1,23 @@
+name: PR target policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions: {}
+
+jobs:
+  target:
+    name: PR target
+    runs-on: ubuntu-latest
+    env:
+      BASE: ${{ github.event.pull_request.base.ref }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+    steps:
+      - name: Validate the target and source branches
+        run: |
+          if [[ "$BASE" == next ]]; then exit 0; fi
+          if [[ "$BASE" == main && "$HEAD_BRANCH" == next && "$HEAD_REPO" == "$GITHUB_REPOSITORY" ]]; then exit 0; fi
+          echo '::error::普通 PR 必须指向 next；只有本仓库的 next 可发起合入 main 的 PR。'
+          exit 1

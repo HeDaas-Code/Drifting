@@ -2,14 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [main, codex/linux-support, codex/next-desktop, codex/ci-repair]
+    branches: [main, next]
   pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -37,6 +38,7 @@ jobs:
       - run: corepack prepare pnpm@10.17.1 --activate
       - run: pnpm install --frozen-lockfile
       - run: pnpm ci:contract:check
+      - run: node scripts/check-release.mjs "v$(node -p 'require("./package.json").version')"
       - run: pnpm openai:catalog:check
       - run: pnpm public:check
       - run: node scripts/check-macos-icon.mjs --check
@@ -160,3 +162,135 @@ jobs:
       # covers the npm side in client / checks.
       - run: cargo install cargo-audit --version 0.22.2 --locked
       - run: pnpm security:rust
+
+  linux-tests:
+    uses: ./.github/workflows/linux.yml
+
+  windows-tests:
+    uses: ./.github/workflows/windows.yml
+
+  next-tests:
+    uses: ./.github/workflows/next.yml
+
+  codex-compatibility:
+    uses: ./.github/workflows/codex-compatibility.yml
+
+  cloud-tests:
+    name: Cloud tests
+    if: ${{ always() }}
+    needs: [client, native, linux-tests, windows-tests, next-tests, codex-compatibility]
+    runs-on: ubuntu-latest
+    env:
+      RESULTS: ${{ join(needs.*.result, ' ') }}
+    steps:
+      - run: |
+          for result in $RESULTS; do
+            test "$result" = success || exit 1
+          done
+
+  linux-preview:
+    if: ${{ github.event_name == 'pull_request' }}
+    needs: cloud-tests
+    uses: ./.github/workflows/linux.yml
+    with:
+      build: true
+
+  windows-preview:
+    if: ${{ github.event_name == 'pull_request' }}
+    needs: cloud-tests
+    uses: ./.github/workflows/windows.yml
+    with:
+      build: true
+
+  next-build:
+    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' }}
+    needs: cloud-tests
+    uses: ./.github/workflows/next.yml
+    with:
+      build: true
+
+  cloud-build:
+    name: Cloud build
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: [cloud-tests, linux-preview, windows-preview, next-build, macos-preview]
+    runs-on: ubuntu-latest
+    env:
+      RESULTS: ${{ join(needs.*.result, ' ') }}
+    steps:
+      - run: |
+          for result in $RESULTS; do
+            test "$result" = success || exit 1
+          done
+
+  promotion:
+    name: Verify main promotion
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Require a merged PR from this repository's next branch
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" |
+            jq -es --arg sha "$GITHUB_SHA" --arg repo "$GITHUB_REPOSITORY" '
+              any(.[][]; .merge_commit_sha == $sha and .merged_at != null
+                and .base.ref == "main" and .head.ref == "next"
+                and .head.repo.full_name == $repo)
+            '
+
+  release:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [cloud-tests, next-build, promotion]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    secrets: inherit
+
+  macos-preview:
+    if: ${{ github.event_name == 'pull_request' }}
+    needs: cloud-tests
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.1
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
+        with:
+          toolchain: 1.96.0
+          targets: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.17.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Build the local macOS preview
+        env:
+          VITE_LOCAL_ONLY_MODE: 'true'
+          VITE_REQUIRE_AUTH: 'false'
+          VITE_AI_TRANSPORT: direct
+          VITE_API_BASE_URL: http://localhost:3000
+          API_BASE_URL: http://localhost:3000
+        run: |
+          pnpm exec tauri build --target aarch64-apple-darwin --bundles dmg \
+            --config '{"bundle":{"createUpdaterArtifacts":false}}'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: drifting-macos-arm64-${{ github.sha }}
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  next-release:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [cloud-tests, next-build, promotion]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-next.yml

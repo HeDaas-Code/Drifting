@@ -1,11 +1,16 @@
-## Summary
+## 改动说明
 
-Describe the user-facing or architectural change and its acceptance evidence.
+说明用户可见的变化、修复原因或架构调整。请关联相关议题。
 
-## Checklist
+## 验证
 
-- [ ] I ran the relevant checks documented in `CONTRIBUTING.md`.
-- [ ] I did not include secrets, private manuscripts, personal databases, or unpublished customer data.
-- [ ] I documented the source and license of any third-party code or asset.
-- [ ] I reviewed any AI-assisted content and accept responsibility for its rights and correctness.
-- [ ] I have read and agree to `CLA.md` for this contribution.
+列出本地检查、测试结果和适用的验收证据。
+
+## 提交前确认
+
+- [ ] 本 PR 的目标为 `next`。从本仓库的 `next` 发布时，目标为 `main`。
+- [ ] 已按 `CONTRIBUTING.md` 执行相关检查。
+- [ ] 已排除密钥、私人稿件、个人数据库和未公开客户数据。
+- [ ] 已注明新增第三方代码或资产的来源和许可。
+- [ ] 已审阅 AI 辅助生成的内容，并对其权利和正确性负责。
+- [ ] 已阅读并同意 `CLA.md`。

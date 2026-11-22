@@ -9,6 +9,8 @@ Start with the [contributor quick start](docs/contributor-quick-start.md), inclu
 macOS certificate setup and the certificate-free code-checking workflow. On
 Windows, see [Developing on Windows](docs/windows.md#developing-on-windows).
 
+Open contribution PRs against `next`. Only the repository’s own `next` branch may open a promotion PR to `main`. Every PR runs cloud tests, followed by preview builds when the tests pass. A push to `main` revalidates the merged commit before publishing. See the [release workflow](docs/releasing.md) for the required checks and branch rules.
+
 ## License agreement
 
 By submitting a pull request, you confirm that you have read and agree to
@@ -57,8 +59,7 @@ against the RustSec advisory database with
 [cargo-audit](https://github.com/rustsec/rustsec) (`cargo install cargo-audit
 --locked`) and fails on any vulnerability, as `pnpm security:dependencies`
 does for high and critical npm advisories.
-Both contexts run on every push to `main`; the `main` ruleset requires them,
-with an administrator bypass.
+Both contexts feed the required `Cloud tests` check.
 The Tauri client requires Rust 1.96 or newer for its read-only Yrs search
 projection; CI and release builds select 1.96.0 explicitly.
 
@@ -66,8 +67,6 @@ Run `pnpm perf:rust-reuse` to regenerate the synthetic Rust reuse benchmarks
 and `pnpm perf:rust-reuse:check` to verify their source fingerprints and results.
 See [Rust reuse performance](docs/rust-reuse-performance.md) for the measured
 boundaries and rejected candidates.
-Release tags (`v*`) are verified by the release workflow
-([releasing](docs/releasing.md)), not by an ordinary CI run.
 
 ```bash
 pnpm install --frozen-lockfile

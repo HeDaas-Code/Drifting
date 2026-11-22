@@ -2,23 +2,22 @@ name: Windows
 
 # Windows preview builds (docs/windows.md). Runs the Rust library tests and the
 # contributor's developer commands on Windows and builds unsigned NSIS
-# installers for x64 and ARM64 that sign in to Hosted. Nothing is published:
+# local-mode installers for x64 and ARM64. Nothing is published:
 # the installers are workflow artifacts for manual acceptance in a Windows
 # machine or virtual machine.
 on:
-  push:
-    branches: ['claude/windows-port', 'windows/**']
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      build:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
-concurrency:
-  group: windows-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   rust-tests:
+    if: ${{ !inputs.build }}
     name: windows / rust tests
     runs-on: windows-latest
     timeout-minutes: 90
@@ -50,6 +49,7 @@ jobs:
   # The commands a contributor runs on Windows (docs/windows.md, "Developing
   # on Windows"). Every check after install runs even when an earlier one fails.
   developer-commands:
+    if: ${{ !inputs.build }}
     name: windows / developer commands
     runs-on: windows-latest
     timeout-minutes: 60
@@ -93,6 +93,7 @@ jobs:
         run: pnpm test
 
   installer:
+    if: ${{ inputs.build }}
     name: windows / installer (${{ matrix.arch }})
     strategy:
       fail-fast: false
@@ -108,9 +109,6 @@ jobs:
     timeout-minutes: 90
     env:
       NODE_OPTIONS: --max-old-space-size=4096
-      DRIFTING_HOSTED_ORIGIN: ${{ vars.DRIFTING_HOSTED_ORIGIN }}
-      VITE_TERMS_URL: https://drifting.cc/terms
-      VITE_PRIVACY_URL: https://drifting.cc/privacy
       # The public key is compiled in, so a preview install updates to the next
       # published release that ships Windows; previews sign no updates of their own.
       DRIFTING_UPDATER_PUBLIC_KEY: ${{ vars.DRIFTING_UPDATER_PUBLIC_KEY }}
@@ -132,7 +130,7 @@ jobs:
       - run: corepack prepare pnpm@10.17.1 --activate
       - run: pnpm install --frozen-lockfile
       - name: Build the unsigned installer
-        run: node scripts/run-desktop-tauri.mjs build --online --target ${{ matrix.target }} --bundles nsis
+        run: node scripts/run-desktop-tauri.mjs build --target ${{ matrix.target }} --bundles nsis
       - name: Name the installer by commit
         shell: bash
         run: |
