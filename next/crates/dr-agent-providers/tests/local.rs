@@ -457,6 +457,7 @@ fn tool_call() -> String {
 fn request(base_url: &str, tools: bool) -> DriverRequest {
     let mut config = RunConfig::new(Provider::Local, "qwen3:14b");
     config.route.local = Some(LocalRoute {
+        protocol: None,
         server: "synthetic-server".into(),
         base_url: base_url.into(),
     });
@@ -608,4 +609,62 @@ async fn a_route_off_this_network_or_without_a_server_is_refused_before_any_requ
         Some(Err(dr_agent::Error::Provider(failure)))
             if failure.category == ModelErrorCategory::Network
     ));
+}
+
+#[tokio::test]
+async fn gateway_uses_the_same_prefix_and_bound_key_for_catalogue_and_stream() {
+    let fake = Fake::new(Box::new(|seen| match seen.path.as_str() {
+        "/vendor/v1/models" => (
+            200,
+            json!({"data":[{"id":"team/model:custom"}]}).to_string(),
+        ),
+        "/vendor/v1/chat/completions" => (200, tool_call()),
+        _ => (404, "{}".into()),
+    }));
+    let credentials = Credentials::new(Arc::new(SecretStore::in_memory()));
+    credentials
+        .set_local_key("synthetic-server", "other-key")
+        .await
+        .unwrap();
+    let mut req = request(&format!("{}/vendor/v1", fake.url), true);
+    let config = Arc::make_mut(&mut req.config);
+    config.route.model = "team/model:custom".into();
+    let route = config.route.local.as_mut().unwrap();
+    let protocol = dr_agent::CompatibleProtocol::ChatCompletions;
+    route.protocol = Some(protocol);
+    let scope = dr_agent_providers::gateway::credential_scope(route).unwrap();
+    credentials
+        .set_local_key(&scope, "gateway-key")
+        .await
+        .unwrap();
+    let driver = driver(credentials);
+    let catalog = dr_agent_providers::gateway::discover(
+        driver.http().raw(),
+        &route.base_url,
+        protocol,
+        Some("gateway-key"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(catalog.models[0].id, "team/model:custom");
+    let events: Vec<_> = driver.stream(req, Cancellation::default()).collect().await;
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, Ok(DriverEvent::ToolCall(call)) if call.name == "read")),
+        "{events:?}"
+    );
+    let seen = fake.seen.lock().unwrap();
+    assert_eq!(seen.len(), 2);
+    for request in seen.iter() {
+        assert!(
+            request
+                .headers
+                .to_ascii_lowercase()
+                .contains("authorization: bearer gateway-key")
+        );
+        assert!(!request.headers.contains("other-key"));
+    }
+    assert_eq!(seen[1].body["model"], "team/model:custom");
+    assert!(seen[1].body.get("stream_options").is_none());
 }

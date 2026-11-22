@@ -7,6 +7,8 @@
 从[开发环境配置](docs/contributor-quick-start.md)开始，其中包括 macOS 证书的设置，以及不需要证书的代码检查流程。
 在 Windows 上开发见[在 Windows 上开发](docs/windows.md#developing-on-windows)。
 
+贡献 PR 请指向 `next`。只有本仓库的 `next` 可以通过 PR 合入 `main`。所有 PR 通过云测试后自动编译预览包，主线推送会重新验证并自动发布。分支规则和必需检查见[发布流程](docs/releasing.md)。
+
 ## 授权协议
 
 提交 pull request 即表示你已阅读并同意 [CLA.md](CLA.md)。对客户端和文档的贡献以
@@ -35,13 +37,11 @@ GitHub Actions 会分别运行客户端检查、两组 Vitest 分片和渲染层
 crate 的 `pnpm core:test`；`core:test` 会先用 TypeScript 参照实现核对正文日志样例，所以这一组也安装锁定的
 Node 依赖。随后它运行 `pnpm security:rust`：用 [cargo-audit](https://github.com/rustsec/rustsec)
 （`cargo install cargo-audit --locked`）对照 RustSec 漏洞库审计每个被跟踪的 `Cargo.lock`，出现任何漏洞即失败，
-和 `pnpm security:dependencies` 对 npm 高危及严重漏洞的处理一样。两组检查在每次推送 `main` 时运行；`main`
-的规则集要求它们通过，管理员可绕过。Tauri 客户端的只读 Yrs
+和 `pnpm security:dependencies` 对 npm 高危及严重漏洞的处理一样。两组检查纳入 `Cloud tests`。Tauri 客户端的只读 Yrs
 搜索投影需要 Rust 1.96 或更新版本；CI 和正式构建明确使用 1.96.0。
 
 运行 `pnpm perf:rust-reuse` 重新生成合成的 Rust 复用基准，运行 `pnpm perf:rust-reuse:check`
 核对它们的源码指纹和结果。测得的边界和被否决的候选方案见 [Rust reuse performance](docs/rust-reuse-performance.md)。
-版本标签（`v*`）由发布工作流验证（见[发布流程](docs/releasing.md)），不经过普通的 CI 运行。
 
 ```bash
 pnpm install --frozen-lockfile

@@ -9,7 +9,7 @@ use std::{
 };
 
 use dr_agent::{
-    Cancellation, Driver, DriverEvent, DriverRequest, FinishReason, LocalRoute, ModelCapabilities,
+    Cancellation, Driver, DriverEvent, DriverRequest, FinishReason, ModelCapabilities,
     ModelErrorCategory, ModelRoute, Provider, RunConfig, ThinkingLevel,
 };
 use dr_agent_providers::{
@@ -272,10 +272,7 @@ impl ConnectionService {
 /// A run on one local server's model: no reasoning setting, no hosted search.
 fn local_config(server: &LocalServer, model: &LocalServerModel) -> RunConfig {
     let mut config = RunConfig::new(Provider::Local, &model.id);
-    config.route.local = Some(LocalRoute {
-        server: server.id.clone(),
-        base_url: server.base_url.clone(),
-    });
+    config.route.local = Some(server.route());
     config.web_search = false;
     config.capabilities = Some(ModelCapabilities {
         context_window: model.context_window(),
@@ -1104,7 +1101,8 @@ impl Connections {
         let generation = self.local_generation;
         let service = self.service.clone();
         let http = service.driver().http().clone();
-        let task = http.spawn(async move { service.forget_local_key(&server.id).await });
+        let task =
+            http.spawn(async move { service.forget_local_key(&server.credential_scope()?).await });
         let id = id.to_owned();
         cx.spawn(async move |this, cx| {
             let result = task.await.unwrap_or(Err(LocalFailure::Storage));
@@ -1211,6 +1209,9 @@ impl Connections {
         };
         if server.model(model).is_none() {
             server.models.push(LocalServerModel::new(model, None));
+            if server.protocol.is_some() {
+                server.manual = true;
+            }
         }
         self.write_local(cx);
         true

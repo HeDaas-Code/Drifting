@@ -96,6 +96,17 @@ op! {
         let ms = v.memberships_raw();
         let all_raw_views = v.timeline_views_raw();
         let old = all_raw_views.iter().find(|t| t.id == tv.id).cloned();
+        if old.as_ref().is_some_and(|old| old.calendar_calibration.is_some() && old.calendar_calibration != tv.calendar_calibration) {
+            return Err(WsError::invalid("calendar calibration is immutable after first use"));
+        }
+        if let Some(mapping) = tv.calendar_calibration { mapping.validate().map_err(WsError::invalid)?; }
+        if let Some(calendar) = &tv.calendar_id
+            && old.as_ref().is_none_or(|old| old.calendar_id.as_ref() != Some(calendar))
+            && (v.calendar(calendar)?.is_none() || tv.calendar_calibration.is_none())
+        {
+            return Err(WsError::invalid("calendar selection requires an existing calendar and explicit calibration"));
+        }
+
         // Only a lane this write adds is checked (`kernel-v5.md` §11: the
         // command layer refuses only what this write newly breaks): a lane
         // the view already stores and no longer satisfies the rule (an old
@@ -180,7 +191,11 @@ op! {
         let replaced = Replaces::record(CollectionV3::TimelineViews, &id);
         let (_, at) = cx.write_book_v3(&s, replaced, move |tx| {
             let w = tx.timeline_view(&tv.id)?;
-            w.name(&tv.name)?.pos(tv.pos.as_ref())?.deleted_at(None)?;
+            w.name(&tv.name)?
+                .pos(tv.pos.as_ref())?
+                .calendar_id(tv.calendar_id.as_deref())?
+                .calendar_calibration(tv.calendar_calibration)?
+                .deleted_at(None)?;
             if let Some(old) = old {
                 for l in old.lanes {
                     if !tv.lanes.iter().any(|x| x.entry == l.entry) {

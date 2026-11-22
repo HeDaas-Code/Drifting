@@ -49,7 +49,9 @@ pub fn init(lib: Option<Workspace>, cx: &mut App) {
             let relevant = match e {
                 // A document's words (the book document's own index row is
                 // always empty: nothing to count again for it).
-                WsEvent::Local(c) => dr_workspace::is_text_index(c),
+                WsEvent::Local(c) => {
+                    dr_workspace::is_text_index(c) || c.table == dr_store::pomodoro::TABLE
+                }
                 // The tab shows the book's content (which entries are
                 // counted, the targets) and its writing days; a saved
                 // checkpoint changes neither.
@@ -124,6 +126,9 @@ fn route(batch: Vec<Msg>, cx: &mut App) {
                     }
                 }),
                 Msg::Event(WsEvent::Local(c)) if c.table == "index" => {
+                    view.update(cx, |v, cx| v.reload(cx))
+                }
+                Msg::Event(WsEvent::Local(c)) if c.table == dr_store::pomodoro::TABLE => {
                     view.update(cx, |v, cx| v.reload(cx))
                 }
                 _ => {}

@@ -196,6 +196,70 @@
       "verifying": "검증 중…"
     }
   },
+  "background": {
+    "blur": "반투명 흐림 강도",
+    "builtin": "기본 배경",
+    "custom": "사용자 이미지…",
+    "failed": "이미지를 읽거나 처리할 수 없습니다.",
+    "missing": "저장된 이미지가 없습니다. 교체하거나 삭제하세요.",
+    "pickImage": "PNG, JPEG 또는 WebP 이미지 선택",
+    "preparing": "이미지 준비 중…",
+    "replace": "이미지 교체…",
+    "solid": "단색",
+    "useImage": "이미지 사용"
+  },
+  "bookVersions": {
+    "assetsChanged": "변경된 자료 파일 {{count}}개",
+    "confirmDelete": "삭제 확인",
+    "empty": "저장된 버전 없음",
+    "failed": "버전 작업을 완료하지 못했습니다.",
+    "name": "버전 이름",
+    "proseChanges": "본문 문서 추가 {{added}}개, 변경 {{changed}}개, 삭제 {{removed}}개",
+    "restore": "복사본으로 복원",
+    "save": "버전 저장",
+    "structureChanged": "작품 구조 변경됨",
+    "structureSame": "작품 구조 변경 없음",
+    "title": "버전"
+  },
+  "calendarEditor": {
+    "add": "추가",
+    "axisCoordinate": "Axis coordinate",
+    "baseMonth": "Base month (1-based)",
+    "calibration": "Initial timeline calibration",
+    "confirmDelete": "삭제 확인",
+    "cycleLength": "Cycle length (units)",
+    "date": "날짜",
+    "dateHint": "Date: signed year/month name/day, or era:year/month name/day. Month and era names cannot contain / or :.",
+    "days": "일수",
+    "daysPerUnit": "Days per axis unit",
+    "epochDate": "Calendar epoch date",
+    "epochDay": "Continuous day at epoch",
+    "eras": "기원",
+    "everyYears": "연도 주기",
+    "exceptEvery": "Except every (optional)",
+    "fitTimeline": "모든 사건 표시",
+    "invalid": "Check the calendar fields, epoch and calibration. If a saved value changed, reopen the editor.",
+    "jumpDate": "날짜로 이동",
+    "leapDay": "윤일",
+    "leapMonth": "윤월",
+    "leapRules": "주기적 윤일과 윤월",
+    "months": "월",
+    "moon": "달의 위상",
+    "name": "이름",
+    "newCalendar": "새 달력",
+    "numericScale": "숫자 눈금",
+    "offset": "Offset",
+    "restoreEvery": "Restore every (optional)",
+    "seasons": "계절",
+    "setDate": "날짜 설정",
+    "startYear": "시작 연도",
+    "startsAt": "Starts at (units)",
+    "title": "달력",
+    "unitsPerDay": "Units per day",
+    "useCalendar": "달력 사용",
+    "week": "요일",
+    "weekOffset": "Week offset (days)"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "줄거리…",
     "untitledChapter": "제목 없는 장"
@@ -607,6 +671,21 @@
     "rowPlaceholder": "행",
     "title": "플롯"
   },
+  "pomodoro": {
+    "activeBook": "작품: {{book}}",
+    "end": "종료",
+    "focus": "집중",
+    "longBreak": "긴 휴식",
+    "mute": "음소거",
+    "noSession": "진행 중인 집필 타이머가 없습니다",
+    "pause": "일시 정지",
+    "resume": "계속",
+    "shortBreak": "짧은 휴식",
+    "start": "시작",
+    "summary": "오늘 {{today}}회 · 총 {{total}}회 · {{minutes}}분",
+    "title": "포모도로",
+    "unmute": "소리 켜기"
+  },
   "positionLink": {
     "copied": "위치 링크를 복사했습니다"
   },
@@ -951,6 +1030,7 @@
       "unlimitedHint": "무제한은 모델 호출 횟수에 상한을 두지 않습니다. 턴을 수동으로 중지할 수 있습니다."
     },
     "appearance": {
+      "backdrop": "배경",
       "dark": "어둡게",
       "guides": "가이드",
       "interface_text_large": "크게",

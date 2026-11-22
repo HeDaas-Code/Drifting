@@ -1,3 +1,5 @@
 /target
 # Build products that are not cargo’s: dr-ui’s fonts (crates/dr-ui/script/build-fonts.py).
 /.cache
+# Python workflow-test products.
+__pycache__/

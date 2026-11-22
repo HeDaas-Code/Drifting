@@ -1367,14 +1367,12 @@ impl Workspace {
         cx.notify();
     }
 
-    /// The red light closes the window, in an ordinary book as on 全部项目:
-    /// the book's layout is stored first, so the next launch opens it as it
-    /// was. In a project template's working copy (`project-templates.md` §12,
-    /// PT3), it returns to 全部项目 instead of closing the window
-    /// ([`working_copy`]).
+    /// A template working copy delays closing until focused fields settle and
+    /// the copy is saved; ordinary books store their layout before closing.
     fn listen_on_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let this = cx.weak_entity();
         window.on_window_should_close(cx, move |window, cx| {
+            let close_after = window.window_handle();
             let leaving = this
                 .update(cx, |ws, cx| {
                     let leaving = ws.in_working_copy();
@@ -1389,12 +1387,14 @@ impl Workspace {
                 // it now, while the working copy is still the open book.
                 window.refresh();
                 window.draw(cx).clear(cx);
+                this.update(cx, |ws, cx| {
+                    ws.store_layout(cx);
+                    ws.save_left_working_copy(close_after, cx);
+                })
+                .ok();
+                return false;
             }
             this.update(cx, |ws, cx| {
-                if leaving && ws.show_shelf(window, cx) {
-                    ws.save_left_working_copy(cx);
-                    return false;
-                }
                 ws.store_layout(cx);
                 true
             })
@@ -1745,6 +1745,8 @@ impl Workspace {
                 ws.refocus(window, cx);
             } else if ws.nav.back() {
                 ws.changed(cx);
+            } else {
+                ws.show_shelf(window, cx);
             }
         }))
         .on_action(cx.listener(|ws, _: &GoForward, _, cx| {
@@ -1898,7 +1900,9 @@ impl Render for Workspace {
             .track_focus(&self.focus)
             .relative()
             .size_full()
-            .when(!ebbing, |el| el.bg(p.desk.solid()))
+            .when(!ebbing && !pages::frosted(window, cx), |el| {
+                el.bg(p.desk.solid())
+            })
             .text_color(p.ink(1).solid())
             .on_drag_move::<sidebar::ResizeDrag>(cx.listener(sidebar::on_resize))
             .on_drag_move::<BottomResize>(cx.listener(bottom::on_resize))
@@ -1941,9 +1945,20 @@ impl Render for Workspace {
                 el.child(sidebar::account_menu(self, window, cx))
             })
             .children(self.guide_layer(self.filled().is_some(), window, cx))
+            .when_some(chrome::pomodoro_panel(self, window, cx), |el, panel| {
+                el.child(panel)
+            })
             .children(crate::release::curtain(window, cx));
         let root = self.on_actions(root, cx);
-        glass::surface(Ground::flat(p.desk), root).into_any_element()
+        glass::surface(
+            if pages::frosted(window, cx) {
+                Ground::Uneven
+            } else {
+                Ground::flat(p.desk)
+            },
+            root,
+        )
+        .into_any_element()
     }
 }
 

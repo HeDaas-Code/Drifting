@@ -35,7 +35,7 @@ use crate::{
     local::{self, KeyChange, LocalFailure, LocalServer, LocalServerModel, Probe},
 };
 
-use dr_agent::Provider;
+use dr_agent::{CompatibleProtocol, LocalRoute, Provider};
 use dr_agent_providers::local::{LocalAddress, Software};
 
 /// The local cells' mark: the fifth sand blob, after the four providers'.
@@ -77,6 +77,7 @@ struct Pending {
 struct Form {
     /// The server being changed (「改地址」「加 Key」「编辑密钥」).
     editing: Option<String>,
+    protocol: Option<CompatibleProtocol>,
     key_open: bool,
     busy: bool,
     error: Option<LocalFailure>,
@@ -88,6 +89,7 @@ pub struct LocalConnectionView {
     connections: Entity<Connections>,
     settings: bool,
     address: Entity<TextField>,
+    label: Entity<TextField>,
     key: Entity<TextField>,
     model_name: Entity<TextField>,
     form: Option<Form>,
@@ -112,6 +114,9 @@ impl LocalConnectionView {
             TextField::new("local-model-address", window, cx)
                 .mono()
                 .placeholder(local::ADDRESS_PLACEHOLDER)
+        });
+        let label = cx.new(|cx| {
+            TextField::new("compatible-connection-name", window, cx).placeholder("Connection name")
         });
         let key = cx.new(|cx| {
             TextField::new("local-model-key", window, cx)
@@ -149,6 +154,7 @@ impl LocalConnectionView {
             connections,
             settings,
             address,
+            label,
             key,
             model_name,
             form: None,
@@ -173,11 +179,21 @@ impl LocalConnectionView {
         self.generation += 1;
         self.form = Some(Form {
             editing: editing.map(|server| server.id.clone()),
+            protocol: editing.and_then(|server| server.protocol),
             key_open,
             busy: false,
             error: None,
             pending: None,
             generation: self.generation,
+        });
+        self.label.update(cx, |field, cx| {
+            field.set_disabled(false, cx);
+            field.set_text(
+                editing
+                    .map(|server| server.label.as_str())
+                    .unwrap_or_default(),
+                cx,
+            );
         });
         let text = editing
             .map(|server| server.base_url.clone())
@@ -214,7 +230,7 @@ impl LocalConnectionView {
         if let Some(form) = &mut self.form {
             form.busy = busy;
         }
-        for field in [&self.address, &self.key] {
+        for field in [&self.address, &self.label, &self.key] {
             field.update(cx, |field, cx| field.set_disabled(busy, cx));
         }
         cx.notify();
@@ -250,7 +266,16 @@ impl LocalConnectionView {
         } else {
             KeyChange::Keep
         };
+        let protocol = form.protocol;
+        if protocol.is_some() && self.label.read(cx).text().trim().is_empty() {
+            window.focus(&self.label.focus_handle(cx), cx);
+            return;
+        }
         let editing = form.editing.clone();
+        let previous = editing
+            .as_deref()
+            .and_then(|id| self.connections.read(cx).local_server(id))
+            .cloned();
         let generation = form.generation;
         if let Some(form) = &mut self.form {
             form.error = None;
@@ -261,6 +286,32 @@ impl LocalConnectionView {
         let probe_key = key.clone();
         let existing = editing.clone();
         let task = http.spawn(async move {
+            if let Some(protocol) = protocol {
+                let base_url = dr_agent_providers::gateway::base_url(&raw)
+                    .map_err(|_| LocalFailure::Unreachable)?;
+                let scope_matches = previous.as_ref().is_some_and(|server| {
+                    server.protocol == Some(protocol) && server.base_url == base_url
+                });
+                let route = LocalRoute {
+                    server: existing.unwrap_or_else(local::new_id),
+                    base_url: base_url.clone(),
+                    protocol: Some(protocol),
+                };
+                let probe_key = if !scope_matches && matches!(probe_key, KeyChange::Keep) {
+                    KeyChange::Clear
+                } else {
+                    probe_key
+                };
+                let probe = service.probe_gateway(&route, &probe_key).await?;
+                return Ok((
+                    LocalAddress {
+                        base_url: base_url.clone(),
+                        display: base_url,
+                        reach: dr_agent_providers::local::Reach::ThisComputer,
+                    },
+                    probe,
+                ));
+            }
             service
                 .probe_local(&raw, &probe_key, existing.as_deref())
                 .await
@@ -342,6 +393,15 @@ impl LocalConnectionView {
             .as_deref()
             .and_then(|id| self.connections.read(cx).local_server(id).cloned());
         let id = editing.clone().unwrap_or_else(local::new_id);
+        let protocol = form.protocol;
+        let scope_matches = previous.as_ref().is_some_and(|server| {
+            server.protocol == protocol && server.base_url == address.base_url
+        });
+        let key = if protocol.is_some() && !scope_matches && matches!(key, KeyChange::Keep) {
+            KeyChange::Clear
+        } else {
+            key
+        };
         let has_key = key.has_key(previous.as_ref().is_some_and(|server| server.has_key));
         let models = match &previous {
             // The author's context values follow the models that remain.
@@ -356,13 +416,18 @@ impl LocalConnectionView {
                 .collect(),
             None => models,
         };
-        let label = local::label_for(
-            software,
-            &address,
-            self.connections.read(cx).local_servers(),
-            Some(&id),
-        );
+        let label = if protocol.is_some() {
+            self.label.read(cx).text().trim().chars().take(64).collect()
+        } else {
+            local::label_for(
+                software,
+                &address,
+                self.connections.read(cx).local_servers(),
+                Some(&id),
+            )
+        };
         let server = LocalServer {
+            protocol,
             id: id.clone(),
             base_url: address.base_url,
             label,
@@ -373,7 +438,22 @@ impl LocalConnectionView {
         self.set_busy(true, cx);
         let service = self.connections.read(cx).service();
         let http = service.driver().http().clone();
-        let task = http.spawn(async move { service.apply_local_key(&id, &key).await });
+        let scope = server.credential_scope();
+        let old_scope = previous
+            .as_ref()
+            .and_then(|server| server.credential_scope().ok());
+        let task = http.spawn(async move {
+            let scope = scope?;
+            service.apply_local_key(&scope, &key).await?;
+            if let Some(old) = old_scope.filter(|old| *old != scope) {
+                // Forget the old binding only after the new one is ready.
+                if let Err(error) = service.forget_local_key(&old).await {
+                    let _ = service.forget_local_key(&scope).await;
+                    return Err(error);
+                }
+            }
+            Ok(())
+        });
         let select = editing.is_none();
         cx.spawn_in(window, async move |this, cx| {
             let result = task.await.unwrap_or(Err(LocalFailure::Storage));
@@ -443,6 +523,30 @@ impl LocalConnectionView {
                     ),
                 );
         } else {
+            if let Some(selected) = form.protocol {
+                col = col.child(self.label.clone()).child({
+                    let mut choices = div().flex().flex_wrap().gap(px(5.0));
+                    for (protocol, name) in [
+                        (CompatibleProtocol::ChatCompletions, "Chat Completions"),
+                        (CompatibleProtocol::Responses, "Responses"),
+                        (CompatibleProtocol::AnthropicMessages, "Anthropic Messages"),
+                    ] {
+                        choices = choices.child(
+                            Button::new(format!("gateway-{}", protocol.resource()), name)
+                                .small()
+                                .disabled(form.busy || protocol == selected)
+                                .on_click(cx.listener(move |view, _, _, cx| {
+                                    if let Some(form) = &mut view.form {
+                                        form.protocol = Some(protocol);
+                                        form.error = None;
+                                    }
+                                    cx.notify();
+                                })),
+                        );
+                    }
+                    choices
+                });
+            }
             col = col.child(self.address.clone());
             if form.key_open {
                 col = col.child(self.key.clone());
@@ -804,7 +908,7 @@ impl LocalConnectionView {
                     ),
             );
         }
-        if server.manual {
+        if server.manual || server.protocol.is_some() {
             let field = self.addition_field(&server.id, window, cx);
             let add = server.id.clone();
             table = table.child(
@@ -833,8 +937,11 @@ impl LocalConnectionView {
                 .iter()
                 .any(|s| s.id == *server && s.model(model).is_some())
         });
-        self.additions
-            .retain(|server, _| servers.iter().any(|s| s.id == *server && s.manual));
+        self.additions.retain(|server, _| {
+            servers
+                .iter()
+                .any(|s| s.id == *server && (s.manual || s.protocol.is_some()))
+        });
     }
 }
 
@@ -926,6 +1033,25 @@ impl Render for LocalConnectionView {
             .flex()
             .flex_col()
             .gap(px(6.0));
+        if self.settings && !adding {
+            col = col.child(
+                SandCell::new("gateway-add", "Add compatible API")
+                    .icon(Icon::Plus)
+                    .on_click({
+                        let entity = cx.entity();
+                        move |_, window, cx| {
+                            entity.update(cx, |view, cx| {
+                                view.open(None, false, window, cx);
+                                if let Some(form) = &mut view.form {
+                                    form.protocol = Some(CompatibleProtocol::ChatCompletions);
+                                }
+                                window.focus(&view.label.focus_handle(cx), cx);
+                                cx.notify();
+                            })
+                        }
+                    }),
+            );
+        }
         if servers.is_empty() {
             col = col.child(self.empty_cell(cx, window));
             if adding {

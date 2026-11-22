@@ -231,6 +231,23 @@ pub struct ProjectWriterV3 {
 }
 
 impl ProjectWriterV3 {
+    pub fn calendar(
+        &self,
+        id: &str,
+        value: Option<&dr_model::calendar::CalendarSpec>,
+    ) -> Result<&Self> {
+        let json = value
+            .map(|spec| {
+                spec.validate()
+                    .map_err(|error| DocError::Calendar(error.into()))?;
+                serde_json::to_string(spec).map_err(|error| DocError::Calendar(error.to_string()))
+            })
+            .transpose()?;
+        let calendars = self.map.ensure_mergeable_map("calendars")?;
+        set(&calendars, id, json.as_deref())?;
+        Ok(self)
+    }
+
     pub fn source(&self, pt: Option<&ProjectTemplateRef>) -> Result<&Self> {
         match pt {
             Some(pt) => {
@@ -351,6 +368,19 @@ impl ProjectWriterV3 {
         self.source(def.source.as_ref())?
             .agent(def.agent.as_ref())?
             .book(def.book.as_ref())?;
+        if !def.calendars.is_empty() || self.map.get("calendars").is_some() {
+            let calendars = self.map.ensure_mergeable_map("calendars")?;
+            let want_calendars: std::collections::HashSet<_> =
+                def.calendars.iter().map(|c| c.id.as_str()).collect();
+            for id in calendars.keys().collect::<Vec<_>>() {
+                if !want_calendars.contains(id.as_ref()) {
+                    calendars.delete(&id)?;
+                }
+            }
+            for calendar in &def.calendars {
+                self.calendar(&calendar.id, Some(calendar))?;
+            }
+        }
         let tabs = self.map.ensure_mergeable_map("tabs")?;
         let want: std::collections::HashSet<&str> =
             def.tabs.iter().map(|t| t.id.as_str()).collect();
@@ -1013,6 +1043,27 @@ pub struct TimelineViewWriterV3 {
 }
 
 impl TimelineViewWriterV3 {
+    pub fn calendar_calibration(
+        &self,
+        value: Option<dr_model::calendar::Calibration>,
+    ) -> Result<&Self> {
+        let json = value
+            .map(|mapping| {
+                mapping
+                    .validate()
+                    .map_err(|error| DocError::Calendar(error.into()))?;
+                serde_json::to_string(&mapping)
+                    .map_err(|error| DocError::Calendar(error.to_string()))
+            })
+            .transpose()?;
+        set(&self.map, "calendar_calibration", json.as_deref())?;
+        Ok(self)
+    }
+
+    pub fn calendar_id(&self, id: Option<&str>) -> Result<&Self> {
+        set(&self.map, "calendar_id", id)?;
+        Ok(self)
+    }
     /// The stored record of lane `entry`, made if missing; marks the book
     /// (DV2).
     fn lane(&self, entry: &EntryId) -> Result<LoroMap> {

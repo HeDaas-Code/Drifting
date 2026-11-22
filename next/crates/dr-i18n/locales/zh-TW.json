@@ -196,6 +196,70 @@
       "verifying": "正在驗證…"
     }
   },
+  "background": {
+    "blur": "毛玻璃模糊強度",
+    "builtin": "內建背景",
+    "custom": "自訂圖片…",
+    "failed": "無法讀取或處理這張圖片。",
+    "missing": "已儲存的背景圖片無法使用，請替換或移除。",
+    "pickImage": "選擇 PNG、JPEG 或 WebP 圖片",
+    "preparing": "正在準備圖片…",
+    "replace": "替換圖片…",
+    "solid": "純色",
+    "useImage": "使用圖片"
+  },
+  "bookVersions": {
+    "assetsChanged": "有 {{count}} 個素材檔案變更",
+    "confirmDelete": "確認刪除",
+    "empty": "沒有已儲存的版本",
+    "failed": "版本操作失敗。",
+    "name": "版本名稱",
+    "proseChanges": "正文文件新增 {{added}} 篇、修改 {{changed}} 篇、移除 {{removed}} 篇",
+    "restore": "還原為副本",
+    "save": "儲存版本",
+    "structureChanged": "作品結構有變更",
+    "structureSame": "作品結構無變更",
+    "title": "版本"
+  },
+  "calendarEditor": {
+    "add": "新增",
+    "axisCoordinate": "原刻度座標",
+    "baseMonth": "原月份序號（從 1 起）",
+    "calibration": "首次時間線校準",
+    "confirmDelete": "確認刪除",
+    "cycleLength": "週期長度（單位）",
+    "date": "日期",
+    "dateHint": "日期：帶正負號的年份/月名/日，或紀元名:紀年/月名/日。月名和紀元名不能含 / 或 :。",
+    "days": "日數",
+    "daysPerUnit": "每單位刻度的日長",
+    "epochDate": "曆法換算起點日期",
+    "epochDay": "對應的連續日座標",
+    "eras": "紀元",
+    "everyYears": "每隔年數",
+    "exceptEvery": "例外年週期（可空）",
+    "fitTimeline": "顯示全部事件",
+    "invalid": "請檢查曆法欄位、紀元和錨點。若已儲存的資料有變更，請重新開啟編輯器。",
+    "jumpDate": "跳轉日期",
+    "leapDay": "閏日",
+    "leapMonth": "閏月",
+    "leapRules": "週期性置閏",
+    "months": "月份",
+    "moon": "月相",
+    "name": "名稱",
+    "newCalendar": "新曆法",
+    "numericScale": "數字刻度",
+    "offset": "偏移",
+    "restoreEvery": "重新置閏週期（可空）",
+    "seasons": "季節",
+    "setDate": "設定日期",
+    "startYear": "起始年份",
+    "startsAt": "起點（單位）",
+    "title": "曆法",
+    "unitsPerDay": "每天的單位數",
+    "useCalendar": "使用此曆法",
+    "week": "週制日名",
+    "weekOffset": "週起點偏移（日）"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "梗概…",
     "untitledChapter": "未命名章節"
@@ -607,6 +671,21 @@
     "rowPlaceholder": "列",
     "title": "情節"
   },
+  "pomodoro": {
+    "activeBook": "作品：{{book}}",
+    "end": "結束",
+    "focus": "專注",
+    "longBreak": "長休息",
+    "mute": "靜音",
+    "noSession": "目前沒有寫作計時",
+    "pause": "暫停",
+    "resume": "繼續",
+    "shortBreak": "短休息",
+    "start": "開始",
+    "summary": "今日 {{today}} 輪 · 共 {{total}} 輪 · {{minutes}} 分鐘",
+    "title": "番茄鐘",
+    "unmute": "開啟聲音"
+  },
   "positionLink": {
     "copied": "已複製位置連結"
   },
@@ -951,6 +1030,7 @@
       "unlimitedHint": "「無上限」不設模型呼叫次數上限，你可以手動停止本輪。"
     },
     "appearance": {
+      "backdrop": "背景",
       "dark": "深色",
       "guides": "導覽",
       "interface_text_large": "較大",

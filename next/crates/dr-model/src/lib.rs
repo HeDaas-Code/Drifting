@@ -18,6 +18,7 @@
 //! `dr-doc` maps these onto Loro documents (`docs/rust-rewrite/loro-schema.md`);
 //! commands (F3) validate against them. This crate depends on neither.
 
+pub mod calendar;
 pub mod check;
 pub mod conversation;
 pub mod id;

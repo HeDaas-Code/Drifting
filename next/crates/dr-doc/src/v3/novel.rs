@@ -943,6 +943,7 @@ pub fn novel_project_template_with(ids: &NovelRootEntries) -> ProjectTemplate {
         // The book reads the whole project from the root (`kernel-v5.md` §3).
         book: Some(ProjectBook::default()),
         tabs,
+        calendars: vec![],
     };
 
     let fmod = mid(MOD_FIELDS);
@@ -1022,6 +1023,8 @@ pub fn novel_project_template_with(ids: &NovelRootEntries) -> ProjectTemplate {
         placements: Vec::new(),
         pins: Vec::new(),
         deleted_at: None,
+        calendar_id: None,
+        calendar_calibration: None,
     }];
 
     ProjectTemplate {

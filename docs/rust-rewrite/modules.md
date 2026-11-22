@@ -1,4 +1,4 @@
-# 功能模块 M01–M43
+# 功能模块 M01–M47
 
 > 这一页是 2026-11-07 的**原始模块清单**：每个模块作者能做什么、要对照的旧代码在哪。对照旧版功能时仍然用它；每个模块现在到哪一步见 [progress.md](progress.md)，结论在 `modules/` 下。
 >
@@ -95,7 +95,7 @@ F3 的命令注册表一好就能开，不必等阶段 3。
 | M31 | 帮手面板与改动显现 | 面板、对话记录、上下文指示、引导连接（ChatGPT / DeepSeek / Anthropic / OpenAI 四个格子，一道细线下面是本地模型的格子，加三条起手请求）；Agent 写入时逐字覆盖显现，之后留下绿色（新增）或紫色（改写）墨色，指针碰到才褪去；Markdown 文件夹的外部改动显示为蓝色 | `features/agent/*` 约 3.7k、`components/editor/AgentEditAnimator.tsx` 651 等，约 2.0k；`agent-panel.css` 1396 | M27、F4d | L |
 | M32 | MCP | 对外服务：89 个工具；macOS 用 Unix socket，Windows 用本机回环；一键配置 Codex、Claude Code、Antigravity。扩展客户端：stdio 和 HTTP 两种传输 | 已经是 Rust、可以复用的：`src-tauri/src/mcp_server.rs` 1872、`mcp_server/client_config.rs` 485、`mcp_stdio.rs` 860、`mcp_http.rs` 279；协议层改用 rmcp | M29 | M |
 | M33 | 生图（实验） | 给要素生成立绘候选，放进本机收件箱，保留下来的导入成素材 | `src-tauri/src/codex_images.rs` 1004（Rust，可以复用）、`features/element-images/*` 约 1.1k | M28、M19 | S |
-| M34 | 语音口述（不做，作者 2026-11-16 定） | 原为在帮手的输入框里口述。已从 `next/` 删除：作者用系统听写或第三方语音输入，见 [m34](modules/m34-dictation.md) | `lib/speech/*` 841（DashScope ASR） | M31 | — |
+| M34 | 本地语音听写 | Next 使用本机 whisper.cpp 与按需安装的模型，结果交还输入框，由作者确认后发送；不调用云端语音服务。见 [m34-local-dictation](modules/m34-local-dictation.md) | `lib/speech/*` 841（旧版云端实现，不复用） | M31 | M |
 
 ## 阶段 6：连接与发布
 
@@ -110,6 +110,10 @@ F3 的命令注册表一好就能开，不必等阶段 3。
 | M41 | 导出与搬运 | EPUB / DOCX / PDF 原稿导出；Markdown 分享；`.driftingbook` v2；整库备份；导入 docx 和 Markdown | Rust 原样复用 `src-tauri/src/manuscript_export/*` 约 4.8k（PDF 排版用 krilla、rustybuzz；DOCX、EPUB 只用 zip 手写，不需要 docx-rs、epub-builder 或 typst），只新写「Loro → `Manuscript`」的转换、`library_backup.rs` 709；TS 的 `services/export`、`services/book-transfer`、`components/modals/ImportDialog.tsx` 449 | F3、dr-text | M |
 | M42 | 自动更新与旧版交接 | 检查更新（启动时检查，之后每 3 小时一次），一键安装；最后一个 Tauri 版本把更新交给 GPUI 版本 | `src-tauri/src/app_update.rs` 214、`services/update/*`、`.github/workflows/release.yml` | F7 | M |
 | M43 | Windows 版 | 双架构的 NSIS 安装包；深链接注册；输入法验收（微软拼音）；字体回退 | `docs/windows.md`、`.github/workflows/windows.yml` | F7 | M |
+| M44 | 写作番茄钟 | 作品绑定、休眠/重启恢复、四轮长休息、可调时长、静音与统计记录 | [pomodoro](modules/pomodoro.md) | F6、M07 | M |
+| M45 | 整书命名版本 | 保存、变更摘要、恢复为独立作品、完整性与中断恢复 | [book-versions](modules/book-versions.md) | F2、F6、M41 | M |
+| M46 | 作者自定义历法 | 多历法、纪元与置闰、周期、统一坐标与日期标尺 | [calendars](modules/calendars.md) | F1、F3、M14 | L |
+| M47 | 自定义背景与毛玻璃 | 本地 PNG/JPEG/WebP、原图/模糊预览、透明表面与失效回退 | [backdrop](modules/backdrop.md) | F5、F6、M24 | M |
 
 ## 不在本计划里的
 

@@ -36,7 +36,7 @@ use smallvec::SmallVec;
 
 use crate::{
     fonts::{Role, weight},
-    glass::{self, Ground},
+    glass,
     sand::Icon,
     style::DrStyled,
     theme::Theme,
@@ -410,7 +410,7 @@ impl RenderOnce for Dialog {
             .id(self.id.clone())
             .w(px(self.width))
             .max_w(viewport.width - px(32.0))
-            .bg(p.desk.solid())
+            .bg(crate::glass::overlay_color(p.desk, cx))
             .border(px(0.5))
             .border_color(p.hairline())
             .shadow(float_shadow(p))
@@ -497,7 +497,7 @@ impl RenderOnce for Dialog {
             Place::Center,
             Layer::Dialog,
             glass::surface(
-                Ground::flat(p.desk),
+                crate::glass::overlay_ground(p.desk, cx),
                 div()
                     .id(crate::style::child_id(&self.id, "mist"))
                     .w(viewport.width)

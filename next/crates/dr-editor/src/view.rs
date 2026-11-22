@@ -78,6 +78,7 @@ pub struct ChapterEditor {
     settings: EditorSettings,
     extension: Rc<DriftingExtension>,
     editor: Entity<ProseEditor>,
+    dictation: Entity<dr_ui::dictation::Dictation>,
     todos: Vec<TodoMarker>,
     /// The checklist items last seen: a change (a tick, a new or edited
     /// item) asks for the projection as a marker change does.
@@ -212,6 +213,7 @@ impl ChapterEditor {
         );
         let decor =
             crate::decor::Decor::new(&ws, book, doc_id, &editor, extension.clone(), window, cx);
+        let dictation = cx.new(|cx| dr_ui::dictation::Dictation::new(window, cx));
         let mut this = ChapterEditor {
             ws,
             book: book.to_owned(),
@@ -221,6 +223,7 @@ impl ChapterEditor {
             settings,
             extension,
             editor,
+            dictation: dictation.clone(),
             todos: Vec::new(),
             tasks: Vec::new(),
             pages: Default::default(),
@@ -234,6 +237,17 @@ impl ChapterEditor {
             _editor_events: editor_events,
             _ws_events: ws_events,
         };
+        cx.subscribe_in(
+            &dictation,
+            window,
+            |this, _, event: &dr_ui::dictation::InsertTranscript, window, cx| {
+                let editor = this
+                    .focused_prose(window, cx)
+                    .unwrap_or_else(|| this.editor.clone());
+                editor.update(cx, |editor, cx| editor.paste_text(&event.0, window, cx));
+            },
+        )
+        .detach();
         this.todos = this.find_todos(cx);
         this.tasks = this.find_tasks(cx);
         this
@@ -597,6 +611,7 @@ impl ChapterEditor {
         self.editor = editor;
         self._editor_events = events;
         self.embeds = embeds;
+        self.dictation.update(cx, |view, cx| view.reset(cx));
         self.doc_id = doc_id.to_owned();
         let page = self.page_scroll.clone();
         self.editor.update(cx, |e, _| e.set_page_scroll(page));
@@ -940,14 +955,23 @@ impl Render for ChapterEditor {
             crate::assist::wrap(&self.assist, ProseEditor::element(&self.editor, cx))
                 .into_any_element()
         };
+        use gpui::{ParentElement as _, Styled as _, prelude::FluentBuilder as _};
+        let inner = gpui::div()
+            .w_full()
+            .when(!flat, |column| column.h_full().flex().flex_col())
+            .child(self.dictation.clone())
+            .child(
+                gpui::div()
+                    .w_full()
+                    .when(!flat, |body| body.flex_1().min_h_0())
+                    .child(inner),
+            )
+            .into_any_element();
         if self.embeds.is_none() {
-            return inner.into_any_element();
+            return inner;
         }
         // A material note or v3 body with embeds: tables on the clipboard, file drops/paste, and the highlight key.
-        use gpui::{
-            DragMoveEvent, ExternalPaths, InteractiveElement as _, ParentElement as _, Styled as _,
-            prelude::FluentBuilder as _,
-        };
+        use gpui::{DragMoveEvent, ExternalPaths, InteractiveElement as _};
         use gpui_prose::input::actions::{Copy, Cut, Paste};
         let dropline = self
             .drop_gap

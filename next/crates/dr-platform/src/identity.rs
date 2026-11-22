@@ -37,7 +37,7 @@ pub struct Identity {
     pub publisher: &'static str,
 }
 
-/// Every `next/` build until the hand-over.
+/// The default development identity until the hand-over.
 pub const DEVELOPMENT: Identity = Identity {
     channel: Channel::Development,
     bundle_id: "cc.drifting.next.dev",
@@ -48,6 +48,18 @@ pub const DEVELOPMENT: Identity = Identity {
     // `Drifting.<identifier>`, so a development build never reads or
     // overwrites the author's real keys.
     keychain_service: "Drifting.cc.drifting.next.dev",
+    publisher: "drifting",
+};
+
+/// The independent Next Alpha install. Telemetry and updater policy remain
+/// conservative until F7: this never joins the Tauri automatic-update channel.
+pub const NEXT_ALPHA: Identity = Identity {
+    channel: Channel::Development,
+    bundle_id: "cc.drifting.next.alpha",
+    product_name: "Drifting Next Alpha",
+    executable: "drifting",
+    url_scheme: "drifting-next-alpha",
+    keychain_service: "Drifting.cc.drifting.next.alpha",
     publisher: "drifting",
 };
 
@@ -85,7 +97,14 @@ impl Identity {
     /// The identity this build runs under. Changing it to [`RELEASE`] is the
     /// hand-over's job and nothing else's.
     pub const fn current() -> &'static Identity {
-        &DEVELOPMENT
+        #[cfg(feature = "next-alpha")]
+        {
+            &NEXT_ALPHA
+        }
+        #[cfg(not(feature = "next-alpha"))]
+        {
+            &DEVELOPMENT
+        }
     }
 
     pub fn is_release(&self) -> bool {
@@ -98,7 +117,7 @@ impl Identity {
     }
 
     fn profile_from(&self, value: Option<&str>) -> Option<String> {
-        if self.is_release() {
+        if self.is_release() || self.bundle_id == NEXT_ALPHA.bundle_id {
             None
         } else {
             parse_profile(value)
@@ -154,9 +173,24 @@ mod tests {
     }
 
     #[test]
-    fn every_build_is_the_development_identity_until_the_hand_over() {
+    fn build_identity_never_joins_the_tauri_channel_before_hand_over() {
+        #[cfg(not(feature = "next-alpha"))]
         assert_eq!(Identity::current(), &DEVELOPMENT);
+        #[cfg(feature = "next-alpha")]
+        assert_eq!(Identity::current(), &NEXT_ALPHA);
         assert!(!Identity::current().is_release());
+    }
+
+    #[test]
+    fn alpha_has_independent_install_data_credentials_and_links() {
+        for other in [DEVELOPMENT, RELEASE] {
+            assert_ne!(NEXT_ALPHA.bundle_id, other.bundle_id);
+            assert_ne!(NEXT_ALPHA.keychain_service, other.keychain_service);
+            assert_ne!(NEXT_ALPHA.product_name, other.product_name);
+            assert_ne!(NEXT_ALPHA.url_scheme, other.url_scheme);
+        }
+        assert_eq!(NEXT_ALPHA.profile_from(Some("worktree")), None);
+        assert!(!NEXT_ALPHA.is_release());
     }
 
     #[test]

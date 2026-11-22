@@ -713,6 +713,7 @@ mod tests {
     fn base() -> DriverRequest {
         let mut config = RunConfig::new(Provider::Local, "qwen3:14b");
         config.route.local = Some(dr_agent::LocalRoute {
+            protocol: None,
             server: "server".into(),
             base_url: "http://localhost:11434".into(),
         });

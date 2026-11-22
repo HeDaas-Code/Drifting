@@ -188,6 +188,12 @@ pub fn sample_pdf() -> Vec<u8> {
     pdf(&[page(first), page(table), page(boxes)])
 }
 
+/// Synthetic eSpeak NG speech (English, 22.05 kHz mono PCM), CC0. No microphone.
+/// Regenerate with `script/generate-speech.py`; see fixtures/README.md.
+pub fn speech_wav() -> &'static [u8] {
+    include_bytes!("../fixtures/synthetic-speech.wav")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

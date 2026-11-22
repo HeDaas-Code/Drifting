@@ -7,8 +7,8 @@
 
 use dr_ui::{
     Theme,
-    components::{IconButton, overlay},
-    glass::{self, Kind, Mode, Spec, Tone},
+    components::{Button, IconButton, overlay},
+    glass::{self, Ground, Kind, Mode, Spec, Tone},
     sand::{self, Icon},
     tokens::glass as g,
 };
@@ -24,7 +24,8 @@ use super::fill::{FillPlace, MoonHalf};
 use super::sidebar::Side;
 use crate::actions::{ShowProjectHome, ToggleNotifications, ToggleProjects};
 use crate::notifications::Notifications;
-use crate::strings::t;
+use crate::pomodoro::{self, Phase};
+use crate::strings::{t, tf};
 use dr_i18n::keys;
 
 /// The window-controls row (`--window-titlebar-height`): the traffic lights,
@@ -44,8 +45,8 @@ pub const LEADING_INSET: f32 = if cfg!(target_os = "windows") {
 };
 
 /// Round buttons before the left moon pair: 全部项目, Project Home,
-/// Notifications, Account.
-pub const CLUSTER_ROUND_BUTTONS: usize = 4;
+/// Notifications, Account and Pomodoro.
+pub const CLUSTER_ROUND_BUTTONS: usize = 5;
 
 /// Overlapping moon glyph size (`W25Final`: `size = 18`).
 pub const MOON_SIZE: f32 = 18.0;
@@ -498,6 +499,12 @@ fn cluster(ws: &Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> 
         .when(Notifications::has_pinned(cx), |el| {
             el.child(crate::sync::bell_danger_seal(*p))
         });
+    let pomodoro = seat(
+        IconButton::new("pomodoro", Icon::TaskDoing)
+            .label(t(cx, keys::pomodoro::TITLE))
+            .selected(pomodoro::panel_open(cx))
+            .on_click(|_, _, cx| pomodoro::toggle_panel(cx)),
+    );
     div()
         .flex()
         .flex_row()
@@ -507,7 +514,172 @@ fn cluster(ws: &Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> 
         .child(home)
         .child(notifications)
         .child(account_button(ws, account, window, cx))
+        .child(pomodoro)
         .into_any_element()
+}
+
+fn timer_text(remaining_ms: i64) -> SharedString {
+    let seconds = (remaining_ms.max(0).saturating_add(999) / 1_000) as u64;
+    format!("{:02}:{:02}", seconds / 60, seconds % 60).into()
+}
+
+/// The compact writing timer panel opened from the titlebar.
+pub fn pomodoro_panel(
+    ws: &Workspace,
+    window: &mut Window,
+    cx: &mut Context<Workspace>,
+) -> Option<AnyElement> {
+    if !pomodoro::panel_open(cx) {
+        return None;
+    }
+    let p = Theme::of(window, cx).palette;
+    let controller = cx.global::<pomodoro::Controller>();
+    let timer = controller.timer.clone();
+    let settings = controller.settings;
+    let active_book = timer.as_ref().map(|timer| timer.book_name.clone());
+    let phase = timer.as_ref().map(|timer| timer.phase);
+    let remaining = timer
+        .as_ref()
+        .map(|timer| timer.remaining_ms(chrono::Utc::now().timestamp_millis()))
+        .unwrap_or(0);
+    let muted = timer.as_ref().is_some_and(|timer| timer.muted);
+    let current_book = ws.book_id.clone();
+    let current_book_name = ws.book.name.clone();
+    let actions = if timer.is_none() {
+        Button::new("pomodoro-start", t(cx, keys::pomodoro::START))
+            .primary()
+            .disabled(current_book.is_empty() || current_book_name.is_empty())
+            .on_click(move |_, _, cx| pomodoro::start(&current_book, &current_book_name, cx))
+            .into_any_element()
+    } else if timer
+        .as_ref()
+        .is_some_and(|timer| timer.paused_remaining_ms.is_some())
+    {
+        Button::new("pomodoro-resume", t(cx, keys::pomodoro::RESUME))
+            .primary()
+            .on_click(|_, _, cx| pomodoro::resume(cx))
+            .into_any_element()
+    } else {
+        Button::new("pomodoro-pause", t(cx, keys::pomodoro::PAUSE))
+            .primary()
+            .on_click(|_, _, cx| pomodoro::pause(cx))
+            .into_any_element()
+    };
+    let stop = Button::new("pomodoro-stop", t(cx, keys::pomodoro::END))
+        .small()
+        .disabled(timer.is_none())
+        .on_click(|_, _, cx| pomodoro::stop(cx));
+    let mute = Button::new(
+        "pomodoro-mute",
+        if muted {
+            t(cx, keys::pomodoro::UNMUTE)
+        } else {
+            t(cx, keys::pomodoro::MUTE)
+        },
+    )
+    .small()
+    .disabled(timer.is_none())
+    .on_click(|_, _, cx| pomodoro::toggle_mute(cx));
+    let adjust = |id: String, label: &'static str, phase: Phase, delta: i32| {
+        Button::new(id, label)
+            .small()
+            .on_click(move |_, _, cx| pomodoro::adjust_minutes(phase, delta, cx))
+    };
+    let row = |label: SharedString, value: u32, phase: Phase, id: &'static str| {
+        div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .child(div().child(label))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(4.0))
+                    .child(adjust(format!("{id}-down"), "-", phase, -1))
+                    .child(format!("{value}m"))
+                    .child(adjust(format!("{id}-up"), "+", phase, 1)),
+            )
+    };
+    let card = div()
+        .id("pomodoro-panel")
+        .w(px(320.0))
+        .rounded(px(12.0))
+        .bg(p.paper.solid())
+        .border_1()
+        .border_color(p.hairline())
+        .shadow_md()
+        .p(px(14.0))
+        .occlude()
+        .flex()
+        .flex_col()
+        .gap(px(10.0))
+        .text_color(p.ink(1).solid())
+        .child(
+            div()
+                .font_weight(gpui::FontWeight::BOLD)
+                .child(t(cx, keys::pomodoro::TITLE)),
+        )
+        .child(
+            div()
+                .text_color(p.ink(3).solid())
+                .child(active_book.map_or_else(
+                    || t(cx, keys::pomodoro::NO_SESSION),
+                    |book| tf(cx, keys::pomodoro::ACTIVE_BOOK, &[("book", &book)]),
+                )),
+        )
+        .when(timer.is_some(), |el| {
+            el.child(
+                div()
+                    .text_size(px(28.0))
+                    .child(timer_text(remaining))
+                    .child(format!(
+                        "  {}",
+                        phase.map_or(t(cx, keys::pomodoro::FOCUS), |phase| match phase {
+                            Phase::Focus => t(cx, keys::pomodoro::FOCUS),
+                            Phase::ShortBreak => t(cx, keys::pomodoro::SHORT_BREAK),
+                            Phase::LongBreak => t(cx, keys::pomodoro::LONG_BREAK),
+                        })
+                    )),
+            )
+        })
+        .child(
+            div()
+                .flex()
+                .gap(px(6.0))
+                .child(actions)
+                .child(stop)
+                .child(mute),
+        )
+        .child(row(
+            t(cx, keys::pomodoro::FOCUS),
+            settings.focus_minutes,
+            Phase::Focus,
+            "focus",
+        ))
+        .child(row(
+            t(cx, keys::pomodoro::SHORT_BREAK),
+            settings.short_break_minutes,
+            Phase::ShortBreak,
+            "short",
+        ))
+        .child(row(
+            t(cx, keys::pomodoro::LONG_BREAK),
+            settings.long_break_minutes,
+            Phase::LongBreak,
+            "long",
+        ));
+    Some(
+        overlay::float(
+            overlay::Place::Point(point(
+                px(LEADING_INSET + 4.0 * (g::ROUND + TOGGLE_GAP)),
+                px(TITLEBAR_HEIGHT + 6.0),
+            )),
+            overlay::Layer::Popover,
+            glass::surface(Ground::flat(p.paper), card),
+        )
+        .into_any_element(),
+    )
 }
 
 /// The account menu's button: the avatar in a round of glass.
@@ -572,6 +744,15 @@ fn closed_anchor(
 /// corner where the traffic lights are, in their order.
 pub fn windows_caption(window: &mut Window, cx: &mut App) -> impl IntoElement {
     let mut row = div().absolute().top_0().left_0();
+    if cfg!(target_os = "linux") {
+        return row.child(
+            IconButton::new("linux-back", Icon::ArrowBack)
+                .label("Back")
+                .on_click(|_, window, cx| {
+                    window.dispatch_action(Box::new(crate::actions::GoBack), cx)
+                }),
+        );
+    }
     if !cfg!(target_os = "windows") {
         return row;
     }

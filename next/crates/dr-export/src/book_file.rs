@@ -53,6 +53,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 use crate::files::readable_stem;
 
 mod v3;
+pub mod versions;
 
 pub const FORMAT: &str = "drifting.book";
 /// 5 from `kernel-v5.md` §18: unified entries, asset-library folders
@@ -89,6 +90,8 @@ pub enum BookFileError {
     Older,
     #[error("the book is larger than a book file can hold")]
     TooLarge,
+    #[error("the book import was cancelled")]
+    Cancelled,
     /// Damaged: a checksum, a document or the manifest does not hold up.
     #[error("the book file is damaged: {0}")]
     Damaged(String),
@@ -357,6 +360,24 @@ fn is_legacy(head: &[u8]) -> bool {
     map && head.windows(FORMAT.len()).any(|w| w == FORMAT.as_bytes())
 }
 
+fn parse_manifest(raw: &[u8]) -> Result<Manifest> {
+    let header: Header = serde_json::from_slice(raw).map_err(|_| BookFileError::NotABook)?;
+    if header.format != FORMAT {
+        return Err(BookFileError::NotABook);
+    }
+    if header.format_version > FORMAT_VERSION {
+        return Err(BookFileError::Newer);
+    }
+    // 2..=4: earlier book-file formats before `kernel-v5.md` §18, no longer read.
+    if (2..FORMAT_VERSION).contains(&header.format_version) {
+        return Err(BookFileError::Older);
+    }
+    if header.format_version < FORMAT_VERSION {
+        return Err(BookFileError::Legacy);
+    }
+    serde_json::from_slice(raw).map_err(|e| BookFileError::Damaged(format!("manifest: {e}")))
+}
+
 fn read_file(path: &Path) -> Result<Contents> {
     let size = std::fs::metadata(path)?.len();
     if size > MAX_BYTES {
@@ -388,22 +409,7 @@ fn read_file(path: &Path) -> Result<Contents> {
         BookFileError::Damaged(_) => BookFileError::NotABook,
         e => e,
     })?;
-    let header: Header = serde_json::from_slice(&raw).map_err(|_| BookFileError::NotABook)?;
-    if header.format != FORMAT {
-        return Err(BookFileError::NotABook);
-    }
-    if header.format_version > FORMAT_VERSION {
-        return Err(BookFileError::Newer);
-    }
-    // 2..=4: earlier book-file formats before `kernel-v5.md` §18, no longer read.
-    if (2..FORMAT_VERSION).contains(&header.format_version) {
-        return Err(BookFileError::Older);
-    }
-    if header.format_version < FORMAT_VERSION {
-        return Err(BookFileError::Legacy);
-    }
-    let manifest: Manifest = serde_json::from_slice(&raw)
-        .map_err(|e| BookFileError::Damaged(format!("manifest: {e}")))?;
+    let manifest = parse_manifest(&raw)?;
     let mut checked = |path: &str, sha: &str, size: u64| -> Result<Vec<u8>> {
         let bytes = entry(path, MAX_BYTES)?;
         if bytes.len() as u64 != size || sha256_hex(&bytes) != sha {
@@ -621,11 +627,31 @@ pub fn import_book(
     path: &Path,
     progress: &dyn Fn(Progress),
 ) -> Result<BookFileSummary> {
+    import_book_cancellable(ws, path, progress, &|| false)
+}
+
+pub fn import_book_cancellable(
+    ws: &Workspace,
+    path: &Path,
+    progress: &dyn Fn(Progress),
+    cancelled: &dyn Fn() -> bool,
+) -> Result<BookFileSummary> {
+    let check_cancelled = || {
+        if cancelled() {
+            Err(BookFileError::Cancelled)
+        } else {
+            Ok(())
+        }
+    };
+    check_cancelled()?;
     let read = read_file(path)?;
     let rw = rewrite_for(&read)?;
     let lib = ws.library();
     let new_book = rw.ids[&read.manifest.book].clone();
     let total = read.docs.len() + read.assets.len();
+    let book_source = read.docs.last().expect("validated book document");
+    let planned_book = rw.doc(&book_source.0.id, &book_source.1)?;
+    lib.begin_book_import(&new_book, &planned_book.oplog_vv())?;
     let mut written = Written::default();
     let result = (|| -> Result<()> {
         // Assets, then prose, then the book document.
@@ -635,6 +661,7 @@ pub fn import_book(
         }
         let mut done = 0;
         for (old, variants) in by_asset {
+            check_cancelled()?;
             let new = &rw.ids[old];
             let mut import = lib.begin_asset_import(&new_book, new)?;
             // The source first: the others hang on it.
@@ -659,6 +686,7 @@ pub fn import_book(
             written.assets.push(new.clone());
         }
         for (d, bytes) in &read.docs {
+            check_cancelled()?;
             let new_id = rw.doc_id(&d.id).expect("mapped");
             let doc_id =
                 DocId::parse(&new_id).map_err(|e| BookFileError::Damaged(e.to_string()))?;
@@ -721,8 +749,10 @@ pub fn import_book(
                 cleanup,
             });
         }
+        lib.finish_book_import(&new_book)?;
         return Err(e);
     }
+    lib.finish_book_import(&new_book)?;
     let bytes = std::fs::metadata(path).map_or(0, |m| m.len());
     Ok(BookFileSummary {
         book: new_book,

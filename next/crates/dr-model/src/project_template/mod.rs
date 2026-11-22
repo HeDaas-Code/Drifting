@@ -148,6 +148,8 @@ pub struct ProjectTemplateValue {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TemplateProject {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub calendars: Vec<crate::calendar::CalendarSpec>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<TemplateAgent>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -694,6 +696,10 @@ pub struct TemplateViewPin {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TemplateView {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar_calibration: Option<crate::calendar::Calibration>,
     #[serde(rename = "ref")]
     pub sym_ref: String,
     pub name: String,

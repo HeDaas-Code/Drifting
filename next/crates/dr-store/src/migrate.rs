@@ -277,6 +277,10 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "0008_local_book",
         sql: include_str!("../migrations/0008_local_book.sql"),
     },
+    Migration {
+        name: "0009_pomodoro_sessions",
+        sql: include_str!("../migrations/0009_pomodoro_sessions.sql"),
+    },
 ];
 
 // Which migrations are published (and so frozen) is tracked in one place:

@@ -4,10 +4,10 @@
 //! and the app's data folder.
 
 /// The name in the menu bar, the Dock and the About window.
-pub const APP_NAME: &str = "Drifting Next";
+pub const APP_NAME: &str = dr_platform::Identity::current().product_name;
 
 /// The development bundle id. `script/bundle-mac` writes the same value.
-pub const BUNDLE_ID: &str = "cc.drifting.next.dev";
+pub const BUNDLE_ID: &str = dr_platform::Identity::current().bundle_id;
 
 /// The release client's bundle id, which only F7's hand-over may adopt.
 #[cfg(test)]
@@ -28,6 +28,7 @@ mod tests {
 
     const BUNDLE_SCRIPT: &str = include_str!("../../../script/bundle-mac");
 
+    #[cfg(not(feature = "next-alpha"))]
     fn script_value(name: &str) -> &'static str {
         let prefix = format!("{name}=");
         BUNDLE_SCRIPT
@@ -38,6 +39,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "next-alpha"))]
     fn the_bundle_script_and_the_app_agree_on_the_identity() {
         assert_eq!(script_value("BUNDLE_ID"), BUNDLE_ID);
         assert_eq!(script_value("APP_NAME"), APP_NAME);

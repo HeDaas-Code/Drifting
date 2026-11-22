@@ -174,6 +174,19 @@ impl Render for View {
                 ui.t(keys::project_picker::heat::TODAY),
                 ui.words(today.max(0) as u64),
             ));
+            if matches!(&data.scope, Scope::Book) {
+                first = first.child(ui.row(
+                    ui.t(keys::pomodoro::TITLE),
+                    ui.fmt(
+                        keys::pomodoro::SUMMARY,
+                        &[
+                            ("today", &data.pomodoro.today_sessions),
+                            ("total", &data.pomodoro.total_sessions),
+                            ("minutes", &data.pomodoro.total_focus_minutes),
+                        ],
+                    ),
+                ));
+            }
             if let Some(f) =
                 crate::model::progress(today.max(0) as u64, data.days.daily_word_target)
             {

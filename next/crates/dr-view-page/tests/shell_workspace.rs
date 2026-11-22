@@ -2107,6 +2107,7 @@ fn the_sea_lies_under_the_shelf_and_the_opening_wait(cx: &mut TestAppContext) {
                     Box::new(Held(kind, holds.clone()))
                 }),
                 ebbing: Rc::new(|_, _| false),
+                frosted: Rc::new(|_, _| false),
                 on_sea: Rc::new(|_, el| el),
             },
         );
@@ -2529,6 +2530,7 @@ fn sea_opening_wait_prepares_v3_entry_modules_without_stalling(cx: &mut TestAppC
                     Box::new(Held(kind, holds.clone()))
                 }),
                 ebbing: Rc::new(|_, _| false),
+                frosted: Rc::new(|_, _| false),
                 on_sea: Rc::new(|_, el| el),
             },
         );

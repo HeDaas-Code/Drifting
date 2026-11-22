@@ -1710,7 +1710,7 @@ pub fn notification_center(
         .overflow_y_scroll()
         .pb(px(m::PAD_Y))
         .rounded(px(radius::SHEET))
-        .bg(p.desk.solid())
+        .bg(dr_ui::glass::overlay_color(p.desk, cx))
         .shadow(float_shadow(p))
         .child(slab_edge(p, radius::SHEET))
         .child(header)

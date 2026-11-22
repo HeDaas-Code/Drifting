@@ -989,7 +989,9 @@ impl Render for Shelf {
         let theme = Theme::of(window, cx);
         let p = theme.palette;
         // On the sea of characters (M24) the shelf leaves its ground clear.
-        let on_sea = Sea::of(window, cx).is_on();
+        let on_sea = dr_view_sea::background::is_custom(cx)
+            || (dr_view_sea::background::mode(cx) == dr_view_sea::background::Mode::Builtin
+                && Sea::of(window, cx).is_on());
         let wide = f32::from(window.viewport_size().width) >= ONE_COLUMN_BELOW;
         let rail = rail(self, window, cx);
         let books = books(self, wide, window, cx);
@@ -1021,7 +1023,7 @@ impl Render for Shelf {
             .child(books)
             .children(dialog)
             .children(menu);
-        if on_sea {
+        if on_sea || dr_view_sea::background::is_custom(cx) {
             glass::surface(Ground::Uneven, root)
         } else {
             glass::surface(Ground::flat(p.desk), root)

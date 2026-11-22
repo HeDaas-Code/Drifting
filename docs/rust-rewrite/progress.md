@@ -111,7 +111,7 @@
 | M31 Agent 面板与改动显现 | 只在合成环境验过 | 真窗口走过，对面是合成的模型流。Agent 写入时逐字显现的播放接口有了，产品里没启用 | [m31](modules/m31-agent-panel.md) |
 | M32 MCP | 只在合成环境验过 | 没用真实的 Codex、Claude Code、Antigravity 客户端连过；Windows 上没跑过。入站目录按打开的书给，带上这本书模板声明的动作，目录变了通知客户端重新列（2026-11-13）。审计日志的保留和分页没做 | [m32](modules/m32-mcp.md) |
 | M33 生图 | 暂缓 | 作者 2026-11-16 定：新版先不做，以后做就交给 Agent（在对话里说要什么图，图进素材库）。没有结论文档。当时任务书定的做法：候选图进本机收件箱，留下的经 `material.create`、`asset.put` 成为素材，界面挂在要素页。端点的实测在 [docs/image-generation.md](../image-generation.md) | — |
-| M34 口述 | 不做 | 作者 2026-11-16 定：自己做不如让作者用系统听写或第三方语音输入。实现已从 `next/` 删除，`retired` 门禁拦着不让加回来 | [m34](modules/m34-dictation.md) |
+| M34 本地听写 | CPU 合成识别通过，原生设备验收待做 | 按 2026-11-19 计划采用本地 whisper.cpp；按需模型校验、CPU 运行时构建及 Testkit 合成识别已接通，真实中文麦克风和安装包交互待验收；云端语音保持退役 | [m34](modules/m34-local-dictation.md) |
 | M35 账号与登录 | 只在合成环境验过 | 本机假服务。真实 Hosted、浏览器登录和深链、系统钥匙串都没验 | [m35](modules/m35-account.md) |
 | M36 同步 v2 | 只在合成环境验过 | 两个真窗口对着本机假服务自动同步往返、关窗排空、重开收敛都过了。收到还缺依赖的更新不再确认、从头重放一次；同步进度存在书库里，恢复旧备份后会接着补拉（2026-11-13）。服务端的 `loro-v2` 没部署，见「等作者的事」 | [m36](modules/m36-sync-v2.md) |
 | M37 偏好同步 | 只在合成环境验过 | 本机假服务 | [m37](modules/m37-preference-sync.md) |
@@ -121,6 +121,10 @@
 | M41 导出与搬运 | 已验收 | EPUB / DOCX / PDF、`.driftingbook`、整库备份与恢复。Markdown 分享入口已随切换删除。PDF 的字体家族选择等编辑器的字体设置 | [m41](modules/m41-export.md) |
 | M42 自动更新 | 只在合成环境验过 | 对着本机假的发布源。旧版把更新交给新版的交接只写了设计，发布时由作者定 | [m42](modules/m42-update.md) |
 | M43 Windows | 只在合成环境验过 | 平台接口和打包脚本已有，**没在 Windows 实机上跑过**，而且 CI 上两个 Windows 任务现在是红的。托盘和字体回退链还没接进外壳 | [m43](modules/m43-windows.md) |
+| M44 番茄钟 | 只在自动测试验过 | 工作区标题栏控制、设备本地恢复、作品本地唯一完成记录和统计读取已接入；待打包运行确认声音与真实休眠/关窗体验 | [pomodoro](modules/pomodoro.md) |
+| M45 整书版本 | 自动与 GPUI 组件测试通过 | 命名归档、前后版本摘要、恢复新作品、保留素材、取消及进程退出恢复已验证；Linux/Windows 安装包内验收待完成 | [book-versions](modules/book-versions.md) |
+| M46 自定义历法 | 自动与 GPUI 组件测试通过 | 多历法、规则编辑、连续日坐标、日期标尺/输入、同步及导出已验证；尚需安装包内原生交互验收 | [calendars](modules/calendars.md) |
+| M47 自定义背景与毛玻璃 | 自动图片处理测试通过 | 设置与半透明表面已接通；真实亮暗主题、降低动效、X11/Wayland 和 Windows 安装包视觉验收待做 | [backdrop](modules/backdrop.md) |
 
 ## 没在真实条件下验过的
 

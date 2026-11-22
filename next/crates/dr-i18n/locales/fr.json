@@ -198,6 +198,70 @@
       "verifying": "Vérification…"
     }
   },
+  "background": {
+    "blur": "Flou du verre dépoli",
+    "builtin": "Arrière-plan intégré",
+    "custom": "Image personnalisée…",
+    "failed": "Impossible de lire ou de préparer cette image.",
+    "missing": "L’image enregistrée n’est pas disponible. Remplacez-la ou supprimez-la.",
+    "pickImage": "Choisir une image PNG, JPEG ou WebP",
+    "preparing": "Préparation de l’image…",
+    "replace": "Remplacer l’image…",
+    "solid": "Couleur unie",
+    "useImage": "Utiliser l’image"
+  },
+  "bookVersions": {
+    "assetsChanged": "Fichiers de ressources modifiés : {{count}}",
+    "confirmDelete": "Confirmer la suppression",
+    "empty": "Aucune version enregistrée",
+    "failed": "L’opération sur la version a échoué.",
+    "name": "Nom de la version",
+    "proseChanges": "Documents de texte : {{added}} ajoutés, {{changed}} modifiés, {{removed}} supprimés",
+    "restore": "Restaurer en tant que copie",
+    "save": "Enregistrer la version",
+    "structureChanged": "Structure du projet modifiée",
+    "structureSame": "Structure du projet inchangée",
+    "title": "Versions"
+  },
+  "calendarEditor": {
+    "add": "Ajouter",
+    "axisCoordinate": "Axis coordinate",
+    "baseMonth": "Base month (1-based)",
+    "calibration": "Initial timeline calibration",
+    "confirmDelete": "Confirmer la suppression",
+    "cycleLength": "Cycle length (units)",
+    "date": "Date",
+    "dateHint": "Date: signed year/month name/day, or era:year/month name/day. Month and era names cannot contain / or :.",
+    "days": "Jours",
+    "daysPerUnit": "Days per axis unit",
+    "epochDate": "Calendar epoch date",
+    "epochDay": "Continuous day at epoch",
+    "eras": "Ères",
+    "everyYears": "Tous les N ans",
+    "exceptEvery": "Except every (optional)",
+    "fitTimeline": "Afficher tous les événements",
+    "invalid": "Check the calendar fields, epoch and calibration. If a saved value changed, reopen the editor.",
+    "jumpDate": "Aller à la date",
+    "leapDay": "Jours intercalaires",
+    "leapMonth": "Mois intercalaire",
+    "leapRules": "Intercalations périodiques",
+    "months": "Mois",
+    "moon": "Phases lunaires",
+    "name": "Nom",
+    "newCalendar": "Nouveau calendrier",
+    "numericScale": "Échelle numérique",
+    "offset": "Offset",
+    "restoreEvery": "Restore every (optional)",
+    "seasons": "Saisons",
+    "setDate": "Définir la date",
+    "startYear": "Première année",
+    "startsAt": "Starts at (units)",
+    "title": "Calendriers",
+    "unitsPerDay": "Units per day",
+    "useCalendar": "Utiliser le calendrier",
+    "week": "Jours de la semaine",
+    "weekOffset": "Week offset (days)"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "Synopsis…",
     "untitledChapter": "Chapitre sans titre"
@@ -618,6 +682,21 @@
     "rowPlaceholder": "Ligne",
     "title": "Intrigue"
   },
+  "pomodoro": {
+    "activeBook": "Livre : {{book}}",
+    "end": "Terminer",
+    "focus": "Concentration",
+    "longBreak": "Pause longue",
+    "mute": "Couper le son",
+    "noSession": "Aucune session d’écriture active",
+    "pause": "Mettre en pause",
+    "resume": "Reprendre",
+    "shortBreak": "Pause courte",
+    "start": "Démarrer",
+    "summary": "{{today}} aujourd’hui · {{total}} au total · {{minutes}} min",
+    "title": "Pomodoro",
+    "unmute": "Activer le son"
+  },
   "positionLink": {
     "copied": "Lien de position copié"
   },
@@ -967,6 +1046,7 @@
       "unlimitedHint": "Sans limite ne fixe aucun maximum d’appels au modèle. Vous pouvez arrêter le tour manuellement."
     },
     "appearance": {
+      "backdrop": "Arrière-plan",
       "dark": "Sombre",
       "guides": "Guides",
       "interface_text_large": "Grand",

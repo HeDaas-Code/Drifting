@@ -52,25 +52,44 @@ impl tour::SeenStore for DeviceSeen {
 
 /// Registers the sea, the first run and the tour with the shell.
 pub fn init(cx: &mut App) {
+    crate::background::install(cx);
     tour::init(cx);
     tour::set_seen_store(cx, DeviceSeen);
     pages::set_backdrop(
         cx,
         Backdrop {
-            draw: Rc::new(|window, cx| char_sea(&Sea::of(window, cx)).into_any_element()),
+            draw: Rc::new(|window, cx| match crate::background::mode(cx) {
+                crate::background::Mode::Image => crate::background::draw(window, cx),
+                crate::background::Mode::Solid => crate::background::solid(window, cx),
+                crate::background::Mode::Builtin => {
+                    char_sea(&Sea::of(window, cx)).into_any_element()
+                }
+            }),
             hold: Rc::new(|kind, window, cx| {
                 let kind = match kind {
                     SeaHold::Surface => HoldKind::Surface,
                     SeaHold::Loading => HoldKind::Loading,
                 };
-                Box::new(Sea::of(window, cx).hold(kind, window))
+                if crate::background::mode(cx) == crate::background::Mode::Builtin {
+                    Box::new(Sea::of(window, cx).hold(kind, window)) as Box<dyn std::any::Any>
+                } else {
+                    Box::new(())
+                }
             }),
-            ebbing: Rc::new(|window, cx| Sea::of(window, cx).mode() == Mode::Ebb),
-            on_sea: Rc::new(|id, el| {
-                on_sea(id, SeaGlass::bare(0.0).hover(false), el).into_any_element()
+            ebbing: Rc::new(|window, cx| {
+                if crate::background::is_custom(cx) {
+                    true
+                } else if crate::background::mode(cx) == crate::background::Mode::Solid {
+                    false
+                } else {
+                    Sea::of(window, cx).mode() == Mode::Ebb
+                }
             }),
+            frosted: Rc::new(|_, cx| crate::background::is_custom(cx)),
+            on_sea: Rc::new(|id, el| BackgroundSurface { id, element: el }.into_any_element()),
         },
     );
+    dr_shell::settings::set_module_row(cx, "appearance.backdrop", crate::background::settings);
     pages::set_first_run(cx, |done, window, cx| {
         let view = cx.new(|cx| FirstRun::new(window, cx, move |window, cx| done(window, cx)));
         let shows = view.downgrade();
@@ -92,4 +111,23 @@ pub fn init(cx: &mut App) {
             reset: Rc::new(tour::reset_seen),
         },
     );
+}
+
+#[derive(gpui::IntoElement)]
+struct BackgroundSurface {
+    id: gpui::SharedString,
+    element: gpui::AnyElement,
+}
+impl gpui::RenderOnce for BackgroundSurface {
+    fn render(self, _: &mut gpui::Window, cx: &mut App) -> impl gpui::IntoElement {
+        if crate::background::is_custom(cx) {
+            crate::background::Frosted {
+                id: self.id,
+                element: self.element,
+            }
+            .into_any_element()
+        } else {
+            on_sea(self.id, SeaGlass::bare(0.).hover(false), self.element).into_any_element()
+        }
+    }
 }

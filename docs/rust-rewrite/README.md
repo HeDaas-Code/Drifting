@@ -12,7 +12,7 @@
 - [v3-cutover.md](v3-cutover.md)：2026-11-11 完成的 canonical v3 切换：范围、保留的源格式边界、验收记录
 - [loro-schema.md](loro-schema.md)：Loro 文档结构
 - [foundation.md](foundation.md)：阶段 0 的探针与基座 F1–F8 的原始计划；各自的结论在 `spikes/`、`foundations/`
-- [modules.md](modules.md)：功能模块 M01–M43 的清单和对应的旧代码；各自的结论在 `modules/`
+- [modules.md](modules.md)：功能模块 M01–M47 的清单和对应的旧代码；各自的结论在 `modules/`
 - [k4-ui.md](k4-ui.md)：界面接回 v3 时的分组（G1–G4、K5）和共同的规矩
 - [handoff/README.md](handoff/README.md)：开一路工作、真窗口验收、整合时别处没写的规矩
 - [benchmarks.md](benchmarks.md)：工作负载、性能预算、输入法矩阵和测量方法

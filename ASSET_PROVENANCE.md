@@ -116,3 +116,10 @@ writing days written or generated for Drifting
 (`src/dev-cli/seeds/showcase/`, AGPL-3.0-or-later like the rest of the
 client). No author's manuscript or personal data is used.
 
+
+
+## Next Alpha local dictation
+
+- CPU runtime: whisper.cpp v1.8.2, commit `4979e04f5dcaccb36057e059bbaed8a2f5288315`, MIT (Copyright 2023–2024 The ggml authors). `next/script/build-whisper.py` verifies the source archive SHA-256 before building and carries `whisper-LICENSE.txt` in the installer. Executables and upstream source are generated cache products, not committed.
+- Optional multilingual Tiny / Base / Small weights: the maintainer's public `ggerganov/whisper.cpp` repository on Hugging Face at revision `5359861c739e955e79d9a303bcbc70fb988958b1`. The app downloads only on request and verifies byte size and SHA-256 LFS OID. Weights are not shipped in the source repository or installers.
+- Synthetic dictation fixture: `next/crates/dr-testkit/fixtures/synthetic-speech.wav`, generated with eSpeak NG 1.51 from the original test sentence in `next/crates/dr-testkit/script/generate-speech.py`; sentence and output dedicated to CC0-1.0. No person was recorded and no private service sample was used.

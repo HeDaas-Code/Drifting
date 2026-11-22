@@ -1167,6 +1167,12 @@ fn exclusion_v3(spec: &Spec) -> Option<&'static str> {
     ) {
         return Some("local timeline edits need exact lane, placement, and pin read coverage");
     }
+    if matches!(
+        spec.name,
+        "calendar.restore" | "timeline_view.restore_calendar"
+    ) {
+        return Some("field-scoped calendar undo is reserved for its editing view");
+    }
     if spec.name == "timeline_view.restore_fields" {
         return Some("scoped timeline undo is internal until K6 provides a guarded facade");
     }

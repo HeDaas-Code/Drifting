@@ -23,6 +23,7 @@
 pub mod anim;
 pub mod assets;
 pub mod components;
+pub mod dictation;
 pub mod drag;
 pub mod fonts;
 pub mod glass;

@@ -210,6 +210,12 @@ Section "Install"
     File "${FONTS_DIR}\OFL-1.1.txt"
     SetOutPath "$INSTDIR"
   !endif
+  !ifdef WHISPER_DIR
+    SetOutPath "$INSTDIR\dictation"
+    File "${WHISPER_DIR}\whisper-cli.exe"
+    File "${WHISPER_DIR}\whisper-LICENSE.txt"
+    SetOutPath "$INSTDIR"
+  !endif
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
   WriteRegStr HKCU "${MANUPRODUCTKEY}" "" "$INSTDIR"
@@ -289,6 +295,9 @@ Section "Uninstall"
   Delete "$INSTDIR\fonts\SarasaMonoSC-Regular.ttf"
   Delete "$INSTDIR\fonts\OFL-1.1.txt"
   RMDir "$INSTDIR\fonts"
+  Delete "$INSTDIR\dictation\whisper-cli.exe"
+  Delete "$INSTDIR\dictation\whisper-LICENSE.txt"
+  RMDir "$INSTDIR\dictation"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
 

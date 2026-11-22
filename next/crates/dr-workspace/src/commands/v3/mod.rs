@@ -38,6 +38,7 @@ macro_rules! op {
 }
 
 pub mod book;
+pub mod calendar;
 pub mod comment;
 pub mod content;
 pub mod entry;
@@ -58,6 +59,7 @@ pub mod types;
 
 pub(crate) fn register(r: &mut Registry) {
     project::register(r);
+    calendar::register(r);
     project_template::register(r);
     layout::register(r);
     relations::register(r);

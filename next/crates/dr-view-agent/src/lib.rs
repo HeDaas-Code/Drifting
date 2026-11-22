@@ -4,6 +4,7 @@ pub mod connection;
 pub mod connection_view;
 pub mod controller;
 mod data;
+pub mod external;
 pub mod home_cards;
 pub mod hub;
 pub mod local;

@@ -196,6 +196,70 @@
       "verifying": "検証中…"
     }
   },
+  "background": {
+    "blur": "すりガラスのぼかし",
+    "builtin": "内蔵の背景",
+    "custom": "カスタム画像…",
+    "failed": "画像を読み込めないか、処理できません。",
+    "missing": "保存された画像がありません。置換または削除してください。",
+    "pickImage": "PNG、JPEG、WebP 画像を選択",
+    "preparing": "画像を準備中…",
+    "replace": "画像を置換…",
+    "solid": "単色",
+    "useImage": "画像を使用"
+  },
+  "bookVersions": {
+    "assetsChanged": "素材ファイルの変更：{{count}}",
+    "confirmDelete": "削除を確定",
+    "empty": "保存したバージョンはありません",
+    "failed": "バージョン操作に失敗しました。",
+    "name": "バージョン名",
+    "proseChanges": "本文文書：追加 {{added}}、変更 {{changed}}、削除 {{removed}}",
+    "restore": "コピーとして復元",
+    "save": "バージョンを保存",
+    "structureChanged": "作品の構造に変更あり",
+    "structureSame": "作品の構造に変更なし",
+    "title": "バージョン"
+  },
+  "calendarEditor": {
+    "add": "追加",
+    "axisCoordinate": "Axis coordinate",
+    "baseMonth": "元の月番号（1 から）",
+    "calibration": "Initial timeline calibration",
+    "confirmDelete": "削除を確定",
+    "cycleLength": "Cycle length (units)",
+    "date": "日付",
+    "dateHint": "Date: signed year/month name/day, or era:year/month name/day. Month and era names cannot contain / or :.",
+    "days": "日数",
+    "daysPerUnit": "Days per axis unit",
+    "epochDate": "暦の基準日",
+    "epochDay": "対応する連続日",
+    "eras": "紀元",
+    "everyYears": "年の周期",
+    "exceptEvery": "Except every (optional)",
+    "fitTimeline": "すべてのイベント",
+    "invalid": "Check the calendar fields, epoch and calibration. If a saved value changed, reopen the editor.",
+    "jumpDate": "日付に移動",
+    "leapDay": "閏日",
+    "leapMonth": "閏月",
+    "leapRules": "周期的な閏規則",
+    "months": "月",
+    "moon": "月相",
+    "name": "名前",
+    "newCalendar": "新しい暦",
+    "numericScale": "数値目盛り",
+    "offset": "Offset",
+    "restoreEvery": "Restore every (optional)",
+    "seasons": "季節",
+    "setDate": "日付を設定",
+    "startYear": "開始年",
+    "startsAt": "Starts at (units)",
+    "title": "暦",
+    "unitsPerDay": "Units per day",
+    "useCalendar": "この暦を使用",
+    "week": "曜日",
+    "weekOffset": "Week offset (days)"
+  },
   "chapterEditor": {
     "synopsisPlaceholder": "あらすじ…",
     "untitledChapter": "無題の章"
@@ -607,6 +671,21 @@
     "rowPlaceholder": "行",
     "title": "プロット"
   },
+  "pomodoro": {
+    "activeBook": "作品：{{book}}",
+    "end": "終了",
+    "focus": "集中",
+    "longBreak": "長い休憩",
+    "mute": "ミュート",
+    "noSession": "執筆タイマーは停止中です",
+    "pause": "一時停止",
+    "resume": "再開",
+    "shortBreak": "短い休憩",
+    "start": "開始",
+    "summary": "今日 {{today}} 回 · 合計 {{total}} 回 · {{minutes}} 分",
+    "title": "ポモドーロ",
+    "unmute": "音をオン"
+  },
   "positionLink": {
     "copied": "位置リンクをコピーしました"
   },
@@ -951,6 +1030,7 @@
       "unlimitedHint": "無制限ではモデル呼び出し回数に上限を設けません。ターンは手動で停止できます。"
     },
     "appearance": {
+      "backdrop": "背景",
       "dark": "ダーク",
       "guides": "ガイド",
       "interface_text_large": "大きめ",

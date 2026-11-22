@@ -868,6 +868,7 @@ fn the_agent_settings_page_has_no_reasoning_row_for_a_local_model(cx: &mut TestA
     };
     assert!(shown(vcx), "DeepSeek has reasoning levels");
     let server = LocalServer {
+        protocol: None,
         id: local::new_id(),
         base_url: fake.url.clone(),
         label: "Ollama".into(),

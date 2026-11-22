@@ -19,6 +19,8 @@
 //! macOS read may raise a password prompt. See the F7 doc for the decision.
 
 mod chunked;
+#[cfg(target_os = "linux")]
+mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(windows)]
@@ -202,15 +204,20 @@ fn system_store(service: &str) -> Box<dyn RawStore> {
     )))
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(target_os = "linux")]
+fn system_store(service: &str) -> Box<dyn RawStore> {
+    Box::new(linux::SecretService::new(service))
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 fn system_store(_service: &str) -> Box<dyn RawStore> {
     Box::new(Unsupported)
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 struct Unsupported;
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 impl RawStore for Unsupported {
     fn get(&self, _key: &str) -> Result<Option<String>> {
         Err(SecretError::Unsupported)

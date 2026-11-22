@@ -1,9 +1,8 @@
 //! The red light in a project template's working copy (`project-templates.md`
-//! §12, PT3): the window steps back to 全部项目 instead of closing.
+//! §12, PT3): pending fields and the template are saved before the window closes.
 //!
 //! - What floats over the page goes first (a dialog, snapshot history,
-//!   Settings, search, the comment composer), so nothing is left over
-//!   全部项目 still writing into the copy.
+//!   Settings, search, the comment composer).
 //! - The keyboard leaves the page and the window draws at once: GPUI tells a
 //!   field it lost the keyboard on the next frame, so without the draw the
 //!   field would hand over what is typed in it only after the copy is saved.
@@ -123,30 +122,48 @@ impl Workspace {
     /// The second half, once the page's fields have handed over what is
     /// typed in them: settle the views' drafts, then save the copy over its
     /// template now.
-    pub(super) fn save_left_working_copy(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn save_left_working_copy(
+        &mut self,
+        close_after: gpui::AnyWindowHandle,
+        cx: &mut Context<Self>,
+    ) {
         let Some(lib) = self.library.clone() else {
             return;
         };
         // A release in progress saves the copies itself (`Workspace::close`).
         if crate::release::is_releasing(cx) {
+            let text = crate::t(cx, keys::common::SAVE_FAILED);
+            self.toast(text, cx);
             return;
         }
         let lease = Saves::of(cx).enter(lib);
         let settled = crate::release::settle(cx);
         cx.spawn(async move |this, cx| {
-            let settled = settled.await;
-            let saved = cx
-                .background_spawn(
-                    async move { lease.flush_working_copies().map_err(|e| e.to_string()) },
-                )
-                .await;
-            if let Err(error) = settled.and(saved) {
-                log::warn!("leaving the template's working copy did not save it: {error}");
-                this.update(cx, |ws, cx| {
-                    let text = crate::t(cx, keys::common::SAVE_FAILED);
-                    ws.toast(text, cx);
-                })
-                .ok();
+            let saved = match settled.await {
+                Ok(()) => {
+                    cx.background_spawn(async move {
+                        lease.flush_working_copies().map_err(|e| e.to_string())
+                    })
+                    .await
+                }
+                Err(error) => Err(error),
+            };
+            match saved {
+                Ok(()) => {
+                    if let Err(error) =
+                        cx.update_window(close_after, |_, window, _| window.remove_window())
+                    {
+                        log::warn!("closing saved template working copy: {error}");
+                    }
+                }
+                Err(error) => {
+                    log::warn!("closing the template's working copy did not save it: {error}");
+                    this.update(cx, |ws, cx| {
+                        let text = crate::t(cx, keys::common::SAVE_FAILED);
+                        ws.toast(text, cx);
+                    })
+                    .ok();
+                }
             }
         })
         .detach();

@@ -1237,6 +1237,11 @@ pub struct TimelineView {
     pub pins: Vec<TimelinePin>,
     #[serde(default)]
     pub deleted_at: Option<Timestamp>,
+    /// The display calendar is independent of the continuous timeline scale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calendar_calibration: Option<crate::calendar::Calibration>,
 }
 
 impl TimelineView {
@@ -1626,6 +1631,8 @@ pub struct ProjectDefinition {
     pub book: Option<ProjectBook>,
     #[serde(default)]
     pub tabs: Vec<ProjectTab>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub calendars: Vec<crate::calendar::CalendarSpec>,
 }
 
 impl ProjectDefinition {
@@ -3094,6 +3101,8 @@ mod tests {
             placements: Vec::new(),
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
+            calendar_calibration: None,
         }];
         let memberships = vec![
             membership("cat", "chapter"),
@@ -3468,6 +3477,8 @@ mod tests {
             }],
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
+            calendar_calibration: None,
         };
         let read = |entries: &BTreeMap<EntryId, Entry>| {
             let valid = filter_valid_memberships(&memberships, entries, &templates);
@@ -3561,6 +3572,8 @@ mod tests {
             }],
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
+            calendar_calibration: None,
         };
 
         assert_eq!(
@@ -3964,6 +3977,8 @@ mod tests {
             ],
             pins: Vec::new(),
             deleted_at: None,
+            calendar_id: None,
+            calendar_calibration: None,
         };
 
         // `ch-1` belongs to `line-1` via membership; `ch-res` resides directly
@@ -4329,6 +4344,8 @@ mod tests {
                 placements: Vec::new(),
                 pins: Vec::new(),
                 deleted_at: None,
+                calendar_id: None,
+                calendar_calibration: None,
             },
         )]);
 

@@ -15,7 +15,10 @@ pub enum DocError {
     Encode(loro::LoroEncodeError),
     /// The bytes loaded for one document belong to another (its
     /// `meta.doc` / `meta.book` names a different id).
-    WrongDocument { expected: DocId, found: String },
+    WrongDocument {
+        expected: DocId,
+        found: String,
+    },
     /// A position outside the text or inside a character.
     Pos(PosError),
     /// A range that ends before it starts or reaches past the final newline.
@@ -48,6 +51,7 @@ pub enum DocError {
     Locked(String),
     /// Invalid conversation data or a repeated event id with different content.
     Conversation(String),
+    Calendar(String),
 }
 
 impl fmt::Display for DocError {
@@ -73,6 +77,7 @@ impl fmt::Display for DocError {
             DocError::Missing { collection, id } => write!(f, "no {id:?} in {collection}"),
             DocError::Locked(id) => write!(f, "{id} is built in and locked"),
             DocError::Conversation(reason) => write!(f, "conversation: {reason}"),
+            DocError::Calendar(reason) => write!(f, "calendar: {reason}"),
         }
     }
 }

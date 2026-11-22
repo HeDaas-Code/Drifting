@@ -1233,6 +1233,23 @@ fn template_initial_prose_copies_all_formats_into_new_entry(cx: &mut TestAppCont
     ot.type_text("模表乙");
     ot.action(SelectAll);
     ot.action(ToggleInlineCode);
+    let template_embed = ot
+        .table()
+        .read_with(ot.cx, |table, _| table.embed().to_string());
+    let (_, source_marks) = ot.view.read_with(ot.cx, |view, _| {
+        view.note_embeds()
+            .unwrap()
+            .table_grid(&template_embed)
+            .unwrap()
+    });
+    assert!(
+        source_marks[0][0].iter().any(|mark| mark.2 == KEY),
+        "the template source has highlight: {source_marks:?}"
+    );
+    assert!(
+        source_marks[0][1].iter().any(|mark| mark.2 == inline::CODE),
+        "the template source has code: {source_marks:?}"
+    );
     ot.cx.update(|w, _| w.remove_window());
     ot.cx.run_until_parked();
 

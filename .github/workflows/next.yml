@@ -1,42 +1,19 @@
-name: next
+name: Next workspace
 
-# The Rust + GPUI rewrite workspace (next/, docs/rust-rewrite). It has its own
-# toolchain (next/rust-toolchain.toml) and lockfile, and runs only when what it
-# checks changes: next/, the plan and its evidence (the gates scan them), the
-# 0.1 client's resources next/ still builds from (until stage 7 moves them),
-# the public-boundary script and this workflow. ci.yml keeps covering the 0.1
-# client.
+# Next 工作区在每个 PR 上执行测试，并在测试通过后执行独立编译。
 on:
-  push:
-    branches: [main, codex/linux-support, codex/next-desktop, codex/ci-repair]
-    paths:
-      - 'next/**'
-      - 'docs/rust-rewrite/**'
-      - 'src/assets/design/**'
-      - 'src/assets/icon.*'
-      - 'src/renderer/locales/**'
-      - 'scripts/check-public-boundaries.mjs'
-      - '.github/workflows/next.yml'
-  pull_request:
-    paths:
-      - 'next/**'
-      - 'docs/rust-rewrite/**'
-      - 'src/assets/design/**'
-      - 'src/assets/icon.*'
-      - 'src/renderer/locales/**'
-      - 'scripts/check-public-boundaries.mjs'
-      - '.github/workflows/next.yml'
+  workflow_call:
+    inputs:
+      build:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
-concurrency:
-  group: next-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   rust:
-    name: next / ${{ matrix.platform }}
+    name: next / ${{ inputs.build && 'build' || 'tests' }} / ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,6 +30,10 @@ jobs:
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             minutes: 240
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            minutes: 90
     runs-on: ${{ matrix.runner }}
     # A cold GPUI build takes several minutes on a desktop Mac. The Windows
     # runners are far slower: at a35c2222a the test binaries alone took 45
@@ -73,6 +54,20 @@ jobs:
         with:
           toolchain: 1.98.1
           components: rustfmt, clippy, rust-src
+      - name: Bound Linux build disk usage
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          {
+            echo 'CARGO_PROFILE_DEV_DEBUG=0'
+            echo 'CARGO_PROFILE_TEST_DEBUG=0'
+            echo 'CARGO_INCREMENTAL=0'
+          } >> "$GITHUB_ENV"
+      - name: Install GPUI Linux build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential clang cmake g++ gettext-base fonts-noto-cjk libasound2-dev libdbus-1-dev libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev lld llvm make pkg-config
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: next
@@ -85,61 +80,70 @@ jobs:
         with:
           path: next/.cache/fonts
           key: dr-ui-fonts-${{ matrix.platform }}-${{ hashFiles('next/crates/dr-ui/assets/fonts/provenance.json', 'next/crates/dr-ui/script/build-fonts.py') }}
-      - if: steps.fonts.outputs.cache-hit != 'true'
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - if: steps.fonts.outputs.cache-hit != 'true'
         run: |
           python -m pip install fonttools==4.60.1
           python crates/dr-ui/script/build-fonts.py
-      - run: cargo fmt --all --check
+      - name: Build CPU dictation runtime
+        if: matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64'
+        run: |
+          python script/build-whisper.py
+      - if: ${{ !inputs.build && matrix.platform == 'linux-x64' }}
+        run: python -m unittest discover -s script/tests -v
+      - if: ${{ !inputs.build }}
+        run: cargo fmt --all --check
       # --keep-going and --no-fail-fast: a run reports every crate and every
       # test binary that fails, not only the first. A Windows run takes over
       # an hour, and what stops there often passes on macOS.
-      - if: ${{ !cancelled() }}
+      - if: ${{ !inputs.build && !cancelled() }}
         run: cargo clippy --workspace --all-targets --locked --keep-going -- -D warnings
       - name: Check stop authorization before the full suite
-        if: ${{ !cancelled() }}
+        if: ${{ !inputs.build && !cancelled() }}
         run: cargo test --workspace --locked --test controller stop_revokes_continuation_before_a_held_slice_returns
-      - if: ${{ !cancelled() }}
+      - if: ${{ !inputs.build && !cancelled() }}
         run: cargo test --workspace --locked --no-fail-fast
-      - if: ${{ !cancelled() }}
-        run: cargo build --workspace --locked
+      - name: Recognize synthetic dictation through the app
+        if: ${{ !inputs.build && !cancelled() && (matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64') }}
+        run: python script/check-dictation.py
       # The gates (simplifications.md §6): privacy, large files, retired
       # products, terms, published migrations, licences, dependency
       # direction, measured evidence and cargo audit. They read the
       # workspace's metadata and text, the same on both platforms.
       # rust-cache keeps ~/.cargo/bin, so the install is a no-op on a hit.
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform != 'windows-arm64' }}
         run: cargo install cargo-audit --version 0.22.2 --locked
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform == 'windows-arm64' }}
+        run: cargo xtask check --skip audit
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform != 'windows-arm64' }}
         run: cargo xtask check
       # The repository-wide public boundary (credentials, private paths,
       # required public files) also covers next/.
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform == 'macos' }}
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22.23.1
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform == 'macos' }}
         working-directory: ${{ github.workspace }}
         run: node scripts/check-public-boundaries.mjs
       # The unsigned development bundle: Info.plist, icons and the ad-hoc
       # seal (codesign --verify) without opening a window; then the disk image
       # and the updater archive a release ships (F7).
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform == 'macos' }}
         run: script/bundle-mac --debug --dmg --archive
       # F8's debug bridge never ships (simplifications.md §6 rule 9): the
       # bundle's executable must not carry it; the development build that
       # does must still compile.
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform == 'macos' }}
         run: cargo xtask check-binary "target/bundle/Drifting Next.app/Contents/MacOS/drifting"
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform == 'macos' }}
         run: cargo check --locked -p drifting --features debug-bridge
       # The release side of updates with a throwaway key (never the release
       # key): sign the archive as `tauri signer` does and verify it; then mount
       # the disk image and find the app and the /Applications link in it.
-      - if: ${{ !cancelled() && matrix.platform == 'macos' }}
+      - if: ${{ !inputs.build && !cancelled() && matrix.platform == 'macos' }}
         name: Check the disk image and the signed update archive
         run: |
           keys="$RUNNER_TEMP/test-updater"
@@ -160,7 +164,18 @@ jobs:
       # The NSIS installer (x64 on windows-latest, arm64 on windows-11-arm):
       # build it from the debug executable, install it for the runner's user,
       # update over it with Tauri's flags, uninstall.
-      - if: ${{ !cancelled() && startsWith(matrix.platform, 'windows') }}
+      - if: ${{ !inputs.build && !cancelled() && startsWith(matrix.platform, 'windows') }}
         name: Check the Windows installer (${{ matrix.platform }})
         shell: pwsh
         run: script/check-windows-installer.ps1
+      - if: ${{ inputs.build }}
+        run: cargo build --workspace --locked
+      - if: ${{ inputs.build && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: drifting-next-${{ matrix.platform }}-${{ github.sha }}
+          path: |
+            next/target/debug/drifting
+            next/target/debug/drifting.exe
+          if-no-files-found: error
+          retention-days: 14

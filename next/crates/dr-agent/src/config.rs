@@ -68,10 +68,39 @@ pub struct ModelRoute {
     pub local: Option<LocalRoute>,
 }
 
-/// The local server a run talks to. The address is frozen into the run like
+/// Protocol chosen explicitly for a compatible API connection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CompatibleProtocol {
+    ChatCompletions,
+    Responses,
+    AnthropicMessages,
+}
+
+impl CompatibleProtocol {
+    pub const fn resource(self) -> &'static str {
+        match self {
+            Self::ChatCompletions => "chat/completions",
+            Self::Responses => "responses",
+            Self::AnthropicMessages => "messages",
+        }
+    }
+
+    pub const fn wire_provider(self) -> Provider {
+        match self {
+            Self::ChatCompletions => Provider::Local,
+            Self::Responses => Provider::Openai,
+            Self::AnthropicMessages => Provider::Anthropic,
+        }
+    }
+}
+
+/// The local server or compatible connection a run talks to. The address is frozen into the run like
 /// the model; the server id names its key in the credential store.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalRoute {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<CompatibleProtocol>,
     pub server: String,
     /// `scheme://host[:port][/path]`, without a trailing `/v1`.
     pub base_url: String,
@@ -144,6 +173,7 @@ mod tests {
         let mut config = RunConfig::new(Provider::Local, "synthetic-local");
         assert!(config.validate().is_err(), "a local run needs its server");
         config.route.local = Some(LocalRoute {
+            protocol: None,
             server: "synthetic-server".into(),
             base_url: "http://localhost:11434".into(),
         });

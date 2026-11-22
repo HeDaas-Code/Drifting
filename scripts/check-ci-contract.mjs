@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from 'node:fs';
 const errors = [];
 const ci = readFileSync('.github/workflows/ci.yml', 'utf8');
 const release = readFileSync('.github/workflows/release.yml', 'utf8');
+const windows = readFileSync('.github/workflows/windows.yml', 'utf8');
+const targetPolicy = readFileSync('.github/workflows/pr-target.yml', 'utf8');
 const linux = readFileSync('.github/workflows/linux.yml', 'utf8');
 
 function requireMatch(source, pattern, message) {
@@ -13,7 +15,9 @@ function requireMatch(source, pattern, message) {
 const push = /^  push:\n((?: {4}[^\n]*\n)*)/mu.exec(ci)?.[1] ?? '';
 const pushBranches = /^ {4}branches: \[([^\]]+)\]$/mu.exec(push)?.[1]
   ?.split(',').map((branch) => branch.trim().replace(/^['"]|['"]$/gu, '')) ?? [];
-if (!pushBranches.includes('main')) errors.push('ordinary CI must run for main pushes');
+for (const branch of ['main', 'next']) {
+  if (!pushBranches.includes(branch)) errors.push(`ordinary CI must run for ${branch} pushes`);
+}
 requireMatch(ci, /^\s{2}pull_request:\s*$/mu, 'ordinary CI must run for pull requests');
 if (/^\s{4}tags:/mu.test(ci)) {
   errors.push('ordinary CI must not duplicate the release workflow on tags');
@@ -36,7 +40,7 @@ requireMatch(ci, /test "\$RENDERER_RESULT" = success/u, 'client must require ren
 requireMatch(ci, /RENDERER_RESULT: \$\{\{ needs\.client-renderer\.result \}\}/u, 'renderer gate must read the renderer job result');
 const rustAction = 'dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de';
 for (const [name, workflow, expectedCount] of [
-  ['ordinary CI', ci, 1],
+  ['ordinary CI', ci, 2],
   // verify, the macOS build, the Windows build and the Linux build
   ['release', release, 4],
 ]) {
@@ -61,11 +65,19 @@ for (const command of [
 ]) {
   if (!ci.includes(command)) errors.push(`client checks are missing: ${command}`);
 }
-requireMatch(
-  release,
-  /^\s{4}tags: \['v\*'\]\s*$/mu,
-  'the release workflow must own v* tags',
-);
+requireMatch(release, /^  workflow_call:$/mu, 'release must be invoked by the CI workflow');
+requireMatch(release, /github.event_name == 'push' && github.ref == 'refs\/heads\/main'/u, 'release must only run on a main push');
+requireMatch(ci, /needs: \[client, native, linux-tests, windows-tests, next-tests, codex-compatibility\]/u, 'cloud tests must wait for all test workflows');
+requireMatch(ci, /needs: \[cloud-tests, linux-preview, windows-preview, next-build, macos-preview\]/u, 'cloud build must wait for every preview platform');
+requireMatch(targetPolicy, /"\$HEAD_BRANCH" == next && "\$HEAD_REPO" == "\$GITHUB_REPOSITORY"/u, 'only this repository’s next branch can promote to main');
+for (const branch of ['main', 'next']) {
+  const ruleset = JSON.parse(readFileSync(`.github/rulesets/${branch}.json`, 'utf8'));
+  const contexts = ruleset.rules.find(({ type }) => type === 'required_status_checks')
+    ?.parameters.required_status_checks.map(({ context }) => context) ?? [];
+  for (const check of ['PR target', 'Cloud tests', 'Cloud build']) {
+    if (!contexts.includes(check)) errors.push(`${branch} ruleset must require ${check}`);
+  }
+}
 if (!release.includes('pnpm ci:contract:check')) {
   errors.push('release validation must enforce the CI contract');
 }
@@ -73,9 +85,9 @@ requireMatch(linux, /^name: Desktop Builds\s*$/mu, 'desktop build workflow must 
 requireMatch(linux, /runs-on: ubuntu-24\.04/u, 'Linux workflow must use Ubuntu 24.04');
 requireMatch(linux, /cargo test --manifest-path src-tauri\/Cargo\.toml --locked --lib/u, 'Linux workflow must run native Rust tests');
 requireMatch(linux, /pnpm tauri:build -- --bundles appimage,deb/u, 'Linux workflow must build AppImage and DEB artifacts');
-requireMatch(linux, /^  windows-build:\s*$/mu, 'desktop workflow must build Windows');
-requireMatch(linux, /runs-on: windows-latest/u, 'Windows build must use a Windows runner');
-requireMatch(linux, /--target x86_64-pc-windows-msvc --bundles nsis/u, 'Windows build must produce an x64 NSIS installer');
+requireMatch(windows, /^  installer:\s*$/mu, 'desktop workflow must build Windows');
+requireMatch(windows, /runner: windows-latest/u, 'Windows build must use a Windows runner');
+requireMatch(windows, /--bundles nsis/u, 'Windows build must produce an NSIS installer');
 
 const testFiles = execFileSync('git', [
   'ls-files',

@@ -968,6 +968,12 @@ pub(crate) fn resolve_v3(
                         *id_val = vid.to_string().into();
                     }
                 }
+                "timeline_view.calendar" => {
+                    if let Some(value) = obj.get_mut("view") {
+                        let id = resolve_timeline_view_id(&cx.view, value)?;
+                        *value = id.to_string().into();
+                    }
+                }
                 "timeline_view.put" => {
                     if let Some(v_obj) = obj.get_mut("view").and_then(Value::as_object_mut) {
                         if let Some(id_val) = v_obj.get_mut("id")
@@ -1515,7 +1521,18 @@ pub(crate) fn coverage_v3(name: &str, args: &Value, output: &Value) -> Option<Ve
     let output = output.get("output").unwrap_or(output);
     let mut read = BTreeSet::new();
     match name {
+        "calendar.list" => {
+            read.insert("calendar:*".into());
+        }
         "project.get" => {
+            read.insert("calendar:*".into());
+            if let Some(rows) = output["calendars"].as_array() {
+                for row in rows {
+                    if let Some(id) = row["id"].as_str() {
+                        read.insert(format!("calendar:{id}"));
+                    }
+                }
+            }
             if let Some(book) = args["book"].as_str() {
                 read.insert(format!("project:{book}"));
             }
@@ -1665,6 +1682,15 @@ pub(crate) fn subjects_v3(name: &str, args: &Value) -> Vec<String> {
             // the unrelated global comment collection. Resolver adds those.
             if args.get("target").is_none_or(Value::is_null) {
                 subjects.insert("comment:*".into());
+            }
+        }
+        "calendar.put" | "calendar.delete" => {
+            subjects.insert("calendar:*".into());
+        }
+        "timeline_view.calendar" => {
+            subjects.insert("calendar:*".into());
+            if let Some(view) = args["view"].as_str() {
+                subjects.insert(format!("timeline_view:{view}"));
             }
         }
         "project.update" => {

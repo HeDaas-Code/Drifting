@@ -37,6 +37,7 @@ pub mod nav;
 pub mod notifications;
 pub mod pages;
 pub mod panes;
+pub mod pomodoro;
 pub mod quit;
 pub mod release;
 pub mod settings;
@@ -127,6 +128,7 @@ pub fn init(info: ShellInfo, services: Services, file: SettingsFile, cx: &mut Ap
     cx.set_global(info);
     cx.set_global(services);
     settings::install(file, cx);
+    pomodoro::install(cx);
     menus::init(cx);
     quit::install(cx);
     notifications::install(cx);

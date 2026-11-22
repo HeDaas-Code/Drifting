@@ -206,6 +206,12 @@ impl ProviderDriver {
     /// providers, this computer or the local network for a local server.
     fn endpoint(&self, request: &DriverRequest) -> Result<String> {
         let route = &request.config.route;
+        if let Some(local) = &route.local
+            && let Some(protocol) = local.protocol
+            && route.provider == Provider::Local
+        {
+            return crate::gateway::endpoint(&local.base_url, protocol.resource());
+        }
         if route.provider == Provider::Local {
             let local = route.local.as_ref().ok_or_else(|| {
                 ProviderError::new(dr_agent::ModelErrorCategory::Unsupported, false)
@@ -230,7 +236,10 @@ impl ProviderDriver {
         let endpoint = self.endpoint(&request)?;
         let single = single_request(&request)?;
         let buffered = !request.tools.is_empty();
-        let mut search = !single && request.config.web_search && !search_was_rejected(&request);
+        let mut search = gateway_protocol(&request).is_none()
+            && !single
+            && request.config.web_search
+            && !search_was_rejected(&request);
         let attempts = if buffered && !single {
             self.retry.max_attempts.max(1)
         } else {
@@ -273,7 +282,9 @@ impl ProviderDriver {
         pending: &mut Vec<DriverEvent>,
         search: &mut bool,
     ) -> Result<()> {
-        let provider = request.config.route.provider;
+        let routing_provider = request.config.route.provider;
+        let gateway = gateway_protocol(request);
+        let provider = gateway.map_or(routing_provider, |protocol| protocol.wire_provider());
         let mut body = wire_request(request, *search)?;
         let mut pause_count = 0;
         let mut prior_replay = Vec::new();
@@ -284,7 +295,7 @@ impl ProviderDriver {
         let mut refreshed = false;
         let oauth_cancel = OAuthCancellation::default();
         loop {
-            let client = if provider == Provider::Local {
+            let client = if routing_provider == Provider::Local && gateway.is_none() {
                 &self.http.local
             } else {
                 self.http.raw()
@@ -293,7 +304,12 @@ impl ProviderDriver {
                 .post(endpoint)
                 .header("accept", "text/event-stream")
                 .json(&body);
-            if provider == Provider::Chatgpt {
+            if let Some(protocol) = gateway {
+                let local = request.config.route.local.as_ref().expect("gateway route");
+                let scope = crate::gateway::credential_scope(local)?;
+                let key = self.credentials.local_key(&scope).await?;
+                http = crate::gateway::authenticate(http, protocol, key.as_deref());
+            } else if provider == Provider::Chatgpt {
                 let auth = self
                     .oauth
                     .authorization(self.http.raw(), auth_retry && !refreshed, &oauth_cancel)
@@ -360,12 +376,13 @@ impl ProviderDriver {
                 return Err(error);
             }
             let mut parser = SseParser::default();
-            let thinking = match provider {
-                Provider::Deepseek => body["thinking"]["type"] == "enabled",
-                Provider::Openai | Provider::Chatgpt => body["reasoning"]["effort"] != "none",
-                Provider::Anthropic => body["thinking"]["type"] == "adaptive",
-                Provider::Local => false,
-            };
+            let thinking = gateway.is_none()
+                && match provider {
+                    Provider::Deepseek => body["thinking"]["type"] == "enabled",
+                    Provider::Openai | Provider::Chatgpt => body["reasoning"]["effort"] != "none",
+                    Provider::Anthropic => body["thinking"]["type"] == "adaptive",
+                    Provider::Local => false,
+                };
             let mut decoder = Decoder::new(provider, index_offset, thinking);
             let mut stream = response.bytes_stream();
             let mut terminal = Vec::new();
@@ -515,13 +532,57 @@ async fn publish(
         .map_err(|_| ProviderError::cancelled())
 }
 
+fn gateway_protocol(request: &DriverRequest) -> Option<dr_agent::CompatibleProtocol> {
+    let route = &request.config.route;
+    if route.provider == Provider::Local {
+        route.local.as_ref().and_then(|local| local.protocol)
+    } else {
+        None
+    }
+}
+
 fn wire_request(request: &DriverRequest, search: bool) -> Result<Value> {
-    match request.config.route.provider {
+    let gateway = gateway_protocol(request);
+    let mut adapted;
+    let request = if let Some(protocol) = gateway {
+        adapted = request.clone();
+        let config = std::sync::Arc::make_mut(&mut adapted.config);
+        config.route.provider = protocol.wire_provider();
+        config.route.thinking = dr_agent::ThinkingLevel::Off;
+        config
+            .capabilities
+            .get_or_insert_with(Default::default)
+            .supports_thinking_off = Some(true);
+        &adapted
+    } else {
+        request
+    };
+    let mut body = match request.config.route.provider {
         Provider::Anthropic => anthropic::request(request, search),
         Provider::Deepseek => deepseek::request(request, search),
         Provider::Openai | Provider::Chatgpt => responses::request(request, search),
         Provider::Local => chat::request(request, search),
+    }?;
+    if gateway.is_some()
+        && let Some(fields) = body.as_object_mut()
+    {
+        for key in [
+            "reasoning",
+            "include",
+            "thinking",
+            "output_config",
+            "stream_options",
+            "prompt_cache_key",
+        ] {
+            fields.remove(key);
+        }
+        if let Some(tools) = fields.get_mut("tools").and_then(Value::as_array_mut) {
+            for tool in tools.iter_mut().filter_map(Value::as_object_mut) {
+                tool.remove("cache_control");
+            }
+        }
     }
+    Ok(body)
 }
 
 pub(crate) fn single_request(request: &DriverRequest) -> Result<bool> {
@@ -541,7 +602,9 @@ fn active_anthropic_replays(
         .rev()
         .take_while(|entry| !crate::conversation::user_boundary(entry))
         .filter(|entry| {
-            request.config.route.provider == Provider::Anthropic
+            (request.config.route.provider == Provider::Anthropic
+                || gateway_protocol(request)
+                    == Some(dr_agent::CompatibleProtocol::AnthropicMessages))
                 && entry.session == request.session
                 && entry.turn == request.turn
         })
