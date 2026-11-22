@@ -7,16 +7,22 @@ on:
   push:
     branches: ['main', 'codex/linux-support', 'linux/**']
   workflow_dispatch:
+    inputs:
+      evidence_ref:
+        description: 'Only regenerate acceptance evidence for this repository branch (empty runs desktop builds)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: linux-${{ github.ref }}
+  group: linux-${{ inputs.evidence_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
   windows-build:
+    if: ${{ !inputs.evidence_ref }}
     name: windows / x64 installer
     runs-on: windows-latest
     timeout-minutes: 90
@@ -71,6 +77,7 @@ jobs:
           retention-days: 14
 
   build:
+    if: ${{ !inputs.evidence_ref }}
     name: linux / native build
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -145,3 +152,39 @@ jobs:
           path: out/linux/*
           if-no-files-found: error
           retention-days: 14
+
+  refresh-evidence:
+    name: Refresh generated acceptance evidence
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.evidence_ref != '' }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.evidence_ref }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.1
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        with:
+          toolchain: 1.96.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: |
+            src-tauri
+            crates/drifting-core
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.17.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm core:fixtures:generate
+      - run: pnpm agent:conversation-sync:evidence
+      - name: Record the exact source revision
+        run: git rev-parse HEAD > evidence-source.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: generated-acceptance-evidence
+          if-no-files-found: error
+          path: |
+            docs/sync-engine/acceptance/agent-conversation-sync.json
+            crates/drifting-core/tests/fixtures/prose-journal-v1.json
+            evidence-source.txt
