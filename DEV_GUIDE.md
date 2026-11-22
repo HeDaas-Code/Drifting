@@ -78,7 +78,7 @@ iOS/Android 的设备选择、服务覆盖与手工验收边界见
 
 - macOS：`~/Library/Application Support/cc.drifting.client/databases/`
 - Windows：`%LOCALAPPDATA%/cc.drifting.client/databases/`（非受支持平台）
-- Linux：`${XDG_DATA_HOME:-~/.local/share}/cc.drifting.client/databases/`（非受支持平台）
+- Linux：`${XDG_DATA_HOME:-~/.local/share}/cc.drifting.client/databases/`
 
 iOS 与 Android 使用各自的应用容器。不要提交 `.local-data/`、数据库、素材、
 Keychain/Keystore 凭据或真实稿件。关系型 Markdown 导出的能力与限制见

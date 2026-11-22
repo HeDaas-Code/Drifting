@@ -196,10 +196,10 @@ jobs:
             gh release create "$GITHUB_REF_NAME" "$RELEASE_DIR"/* --verify-tag --draft --title "Drifting ${VERSION}" --notes-file "$NOTES_FILE"
           fi
 
-  # Windows installers and their signed updater artifacts. They join the draft
-  # only after the macOS build has created it, so a failed Windows build never
-  # holds back the macOS release (docs/windows.md). The installers are not
-  # Authenticode-signed yet: SmartScreen warns on first launch.
+# Windows installers and Linux packages join the draft only after the macOS
+# build has created it, so a platform build failure never holds back the macOS
+# release. Windows installers are not Authenticode-signed yet: SmartScreen
+# warns on first launch.
   build-windows:
     name: build (windows ${{ matrix.arch }})
     needs: verify
@@ -276,9 +276,69 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-linux:
+    name: build (linux x86_64)
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: release
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      DRIFTING_HOSTED_ORIGIN: ${{ vars.DRIFTING_HOSTED_ORIGIN }}
+      VITE_TERMS_URL: https://drifting.cc/terms
+      VITE_PRIVACY_URL: https://drifting.cc/privacy
+      DRIFTING_UPDATER_PUBLIC_KEY: ${{ vars.DRIFTING_UPDATER_PUBLIC_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.1
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master, toolchain input
+        with:
+          toolchain: 1.96.0
+          targets: x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src-tauri
+          key: x86_64-unknown-linux-gnu
+      - name: Install Tauri Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential file libayatana-appindicator3-dev libgtk-3-dev \
+            libsecret-1-dev librsvg2-dev libwebkit2gtk-4.1-dev patchelf pkg-config \
+            xvfb
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.17.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Build the Linux packages and signed updater artifact
+        run: node scripts/run-desktop-tauri.mjs build --online --target x86_64-unknown-linux-gnu --bundles appimage,deb
+      - name: Collect Linux release files
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BUNDLE="src-tauri/target/x86_64-unknown-linux-gnu/release/bundle"
+          APPIMAGE=$(find "$BUNDLE/appimage" -maxdepth 1 -name '*.AppImage' -print -quit)
+          UPDATE=$(find "$BUNDLE/appimage" -maxdepth 1 -name '*.AppImage.tar.gz' -print -quit)
+          DEB=$(find "$BUNDLE/deb" -maxdepth 1 -name '*.deb' -print -quit)
+          test -f "$APPIMAGE" && test -f "$UPDATE" && test -f "$UPDATE.sig" && test -f "$DEB"
+          mkdir -p out/linux-release
+          cp "$APPIMAGE" "out/linux-release/Drifting_${VERSION}_linux_x86_64.AppImage"
+          cp "$DEB" "out/linux-release/Drifting_${VERSION}_linux_x86_64.deb"
+          cp "$UPDATE" "out/linux-release/Drifting_${VERSION}_linux_x86_64.AppImage.tar.gz"
+          cp "$UPDATE.sig" "out/linux-release/Drifting_${VERSION}_linux_x86_64.AppImage.tar.gz.sig"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-release
+          path: out/linux-release/*
+          if-no-files-found: error
+          retention-days: 7
+
   release-windows:
-    name: add Windows to the draft release
-    needs: [build, build-windows]
+    name: add Windows and Linux to the draft release
+    needs: [build, build-windows, build-linux]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: release
@@ -293,10 +353,10 @@ jobs:
           node-version: 22.23.1
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          pattern: windows-release-*
+          pattern: '*-release*'
           path: windows-release
           merge-multiple: true
-      - name: Add the installers and windows-x86_64 / windows-aarch64 to latest.json
+      - name: Add the installers and desktop platforms to latest.json
         run: |
           VERSION=$(node -p "require('./package.json').version")
           test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" = "true"
@@ -311,6 +371,11 @@ jobs:
               --platform "$PLATFORM" --url "$BASE/$NAME" \
               --signature-file "windows-release/$NAME.sig" --version "$VERSION"
           done
+          LINUX_NAME="Drifting_${VERSION}_linux_x86_64.AppImage.tar.gz"
+          test -f "windows-release/$LINUX_NAME" && test -f "windows-release/$LINUX_NAME.sig"
+          node scripts/merge-update-manifest.mjs --manifest release-manifest/latest.json \
+            --platform linux-x86_64 --url "$BASE/$LINUX_NAME" \
+            --signature-file "windows-release/$LINUX_NAME.sig" --version "$VERSION"
           # latest.json changed above: replace its checksum, then add the installers'.
           grep -v ' \./latest\.json$' release-manifest/SHA256SUMS.txt > release-manifest/SHA256SUMS.next
           (cd release-manifest && sha256sum ./latest.json) >> release-manifest/SHA256SUMS.next

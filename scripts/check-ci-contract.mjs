@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 const errors = [];
 const ci = readFileSync('.github/workflows/ci.yml', 'utf8');
 const release = readFileSync('.github/workflows/release.yml', 'utf8');
+const linux = readFileSync('.github/workflows/linux.yml', 'utf8');
 
 function requireMatch(source, pattern, message) {
   if (!pattern.test(source)) errors.push(message);
@@ -36,8 +37,8 @@ requireMatch(ci, /RENDERER_RESULT: \$\{\{ needs\.client-renderer\.result \}\}/u,
 const rustAction = 'dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de';
 for (const [name, workflow, expectedCount] of [
   ['ordinary CI', ci, 1],
-  // verify, the macOS build and the Windows build
-  ['release', release, 3],
+  // verify, the macOS build, the Windows build and the Linux build
+  ['release', release, 4],
 ]) {
   if (workflow.split(rustAction).length - 1 !== expectedCount)
     errors.push(`${name} must use the pinned Rust action that accepts the toolchain input`);
@@ -68,6 +69,13 @@ requireMatch(
 if (!release.includes('pnpm ci:contract:check')) {
   errors.push('release validation must enforce the CI contract');
 }
+requireMatch(linux, /^name: Desktop Builds\s*$/mu, 'desktop build workflow must be present');
+requireMatch(linux, /runs-on: ubuntu-24\.04/u, 'Linux workflow must use Ubuntu 24.04');
+requireMatch(linux, /cargo test --manifest-path src-tauri\/Cargo\.toml --locked --lib/u, 'Linux workflow must run native Rust tests');
+requireMatch(linux, /pnpm tauri:build -- --bundles appimage,deb/u, 'Linux workflow must build AppImage and DEB artifacts');
+requireMatch(linux, /^  windows-build:\s*$/mu, 'desktop workflow must build Windows');
+requireMatch(linux, /runs-on: windows-latest/u, 'Windows build must use a Windows runner');
+requireMatch(linux, /--target x86_64-pc-windows-msvc --bundles nsis/u, 'Windows build must produce an x64 NSIS installer');
 
 const testFiles = execFileSync('git', [
   'ls-files',

@@ -91,6 +91,7 @@ truth.
   [Rust reuse](rust-reuse-performance.md)
 - [Releasing](releasing.md): GitHub Releases, signing and updates
 - [Windows preview](windows.md): unsigned x64 and Arm installers built in CI, platform differences and manual acceptance
+- [Linux](linux.md): AppImage and DEB builds, prerequisites and platform limits
 - [Release screenshots](release-screenshots.md): the shelf, workspace and element overview in both languages and themes, from synthetic data
 - [Promo recording](../scripts/design-assets/promo-recording/README.md): the real app typing a story and working the Agent, composed into a video
 - [Platform limitations](../src-tauri/UNSUPPORTED.md)
