@@ -38,10 +38,10 @@ describe('Windows releases (docs/windows.md)', () => {
     expect(() => mergeUpdateManifest(macManifest, { ...entry, platform: 'windows-arm64' })).toThrow(/Unknown/);
   });
 
-  it('builds both Windows installers after the macOS draft and never holds the macOS release back', () => {
+  it('publishes both Windows installers together with the macOS and Linux artifacts', () => {
     const release = source('.github/workflows/release.yml');
     expect(release).toMatch(/^ {2}build-windows:\n {4}name: .*\n {4}needs: verify$/mu);
-    expect(release).toMatch(/^ {2}release-windows:\n {4}name: .*\n {4}needs: \[build, build-windows, build-linux\]$/mu);
+    expect(release).toMatch(/^ {2}publish:\n {4}name: .*\n {4}needs: \[build, build-windows, build-linux\]$/mu);
     for (const target of ['x86_64-pc-windows-msvc', 'aarch64-pc-windows-msvc']) expect(release).toContain(`target: ${target}`);
     expect(release).toContain('--bundles nsis');
     expect(release).toContain('for pair in x64:windows-x86_64 arm64:windows-aarch64; do');
@@ -55,5 +55,10 @@ describe('Windows releases (docs/windows.md)', () => {
     expect(preview).toContain('runner: windows-latest');
     expect(preview).toContain('runner: windows-11-arm');
     expect(preview).toContain('cargo test --manifest-path src-tauri/Cargo.toml --locked --lib');
+    expect(preview).toContain('--target ${{ matrix.target }} --bundles nsis');
+    expect(preview).toContain('Install and open the App');
+    expect(source('.github/workflows/ci.yml')).toMatch(
+      /^ {2}windows-preview:\n(?: {4}[^\n]+\n)* {4}uses: \.\/\.github\/workflows\/windows\.yml\n {4}with:\n {6}build: true$/mu,
+    );
   });
 });

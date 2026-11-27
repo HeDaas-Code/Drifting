@@ -1517,13 +1517,15 @@ mod local {
                 let grant = inner.grants.iter_mut().find(|g| g.id == id).unwrap();
                 grant.project_id = Some("book-three".into());
             }
-            let edited = fs::read_to_string(dir.path().join("claude.json"))
-                .unwrap()
-                .replace(
-                    &server.config_path(&id).display().to_string(),
-                    "/elsewhere/connection.json",
-                );
-            fs::write(dir.path().join("claude.json"), edited).unwrap();
+            let config_path = dir.path().join("claude.json");
+            let mut edited: Value =
+                serde_json::from_slice(&fs::read(&config_path).unwrap()).unwrap();
+            let args = edited
+                .pointer_mut("/mcpServers/drifting_book_three/args")
+                .unwrap();
+            assert_eq!(*args, made["config"]["args"]);
+            args[2] = serde_json::json!("/elsewhere/connection.json");
+            fs::write(&config_path, serde_json::to_vec(&edited).unwrap()).unwrap();
             let reconnected =
                 connect_installation(&server, synthetic_input(), claude("drifting_library"))
                     .unwrap();

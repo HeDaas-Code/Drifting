@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, next]
+    branches: [main, next, 'codex/ci/**']
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
 
@@ -189,21 +189,21 @@ jobs:
           done
 
   linux-preview:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/codex/ci/') }}
     needs: cloud-tests
     uses: ./.github/workflows/linux.yml
     with:
       build: true
 
   windows-preview:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/codex/ci/') }}
     needs: cloud-tests
     uses: ./.github/workflows/windows.yml
     with:
       build: true
 
   next-build:
-    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' }}
+    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/codex/ci/') }}
     needs: cloud-tests
     uses: ./.github/workflows/next.yml
     with:
@@ -211,7 +211,7 @@ jobs:
 
   cloud-build:
     name: Cloud build
-    if: ${{ always() && github.event_name == 'pull_request' }}
+    if: ${{ always() && (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/codex/ci/')) }}
     needs: [cloud-tests, linux-preview, windows-preview, next-build, macos-preview]
     runs-on: ubuntu-latest
     env:
@@ -250,7 +250,7 @@ jobs:
     secrets: inherit
 
   macos-preview:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/codex/ci/') }}
     needs: cloud-tests
     runs-on: macos-26
     timeout-minutes: 90

@@ -72,14 +72,23 @@ fn the_rebuild_waits_while_the_author_types_and_catches_up_after() {
     let dir = tempfile::tempdir().unwrap();
     let chapter = stale_library(dir.path(), dr_testkit::seed::Preset::Tiny);
     let lib = Library::open(dir.path(), options(Duration::from_millis(1500))).unwrap();
-    let stale = lib.stale_index_docs().unwrap().len();
-    assert!(stale > 10, "{stale}");
+    // The open chapter has its own index worker and may refresh independently
+    // after even a short typing pause. Compare only unopened documents.
+    let stale_closed = || {
+        lib.stale_index_docs()
+            .unwrap()
+            .into_iter()
+            .filter(|id| id != &chapter)
+            .collect::<std::collections::BTreeSet<_>>()
+    };
+    let stale = stale_closed();
+    assert!(stale.len() > 10, "{stale:?}");
     let h = lib.open_doc(&chapter, OpenDoc::Existing).unwrap();
     type_for(&h, Duration::from_secs(3));
     assert_eq!(
-        lib.stale_index_docs().unwrap().len(),
+        stale_closed(),
         stale,
-        "nothing rebuilt while the author typed"
+        "no unopened document was rebuilt while the author typed"
     );
     h.close();
     let t = Instant::now();

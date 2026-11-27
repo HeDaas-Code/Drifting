@@ -6,6 +6,10 @@ Linux 和 Next 编译产物，供下载验收。合入 `main` 后，GitHub Actio
 重新执行检查和构建。发布任务会核对主线提交确实来自本仓库已合并的 `next → main` PR，
 并在签名产物、平台验证和校验清单齐备后自动发布。
 
+如需在开 PR 前复验，推送到 `codex/ci/**` 会运行同一套 **Cloud tests** 和
+**Cloud build**，并把预览产物留在该运行的 Artifacts。正式发布仍要求合入
+`main` 的 `next → main` PR。
+
 Tauri 正式版使用 `main-<完整 SHA>` 标签，发布说明包含该次主线推送的提交信息。
 每次发布都附有 `COMMITS.txt`，记录完整 SHA、作者、提交者、日期和正文；超出
 GitHub 发布说明长度时，完整记录仍可从附件下载。相同源码重跑会复用发布标签。

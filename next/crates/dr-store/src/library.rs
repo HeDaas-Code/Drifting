@@ -446,8 +446,9 @@ impl Inner {
             return None;
         }
         let guard = self.writer.lock().unwrap_or_else(|e| e.into_inner());
-        // Someone asked while this waited for the lock: they go first.
-        self.foreground.quiet_for().is_some().then_some(Writer {
+        // A foreground writer can finish while we wait for the lock. Its
+        // completion starts a new quiet interval even with no writer queued.
+        self.quiet_remaining().is_zero().then_some(Writer {
             guard,
             foreground: None,
         })

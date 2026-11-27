@@ -170,7 +170,7 @@ jobs:
         run: script/check-windows-installer.ps1
       - if: ${{ inputs.build }}
         run: cargo build --workspace --locked
-      - if: ${{ inputs.build && github.event_name == 'pull_request' }}
+      - if: ${{ inputs.build && (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/codex/ci/')) }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: drifting-next-${{ matrix.platform }}-${{ github.sha }}

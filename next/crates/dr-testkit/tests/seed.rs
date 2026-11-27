@@ -486,7 +486,7 @@ fn two_novel_books_in_one_library_have_disjoint_doc_ids_and_purging_one_keeps_th
                 },
             )
             .unwrap();
-        drop(h_book);
+        h_book.close();
 
         // The two documents beside the book, each named by the book's id.
         let mut prose_doc_ids = Vec::new();
@@ -515,7 +515,7 @@ fn two_novel_books_in_one_library_have_disjoint_doc_ids_and_purging_one_keeps_th
                     },
                 )
                 .unwrap();
-            drop(h);
+            h.close();
             prose_doc_ids.push(doc_id);
         }
         // Write every entry module prose doc (the 「说明」 of roots and
@@ -543,7 +543,7 @@ fn two_novel_books_in_one_library_have_disjoint_doc_ids_and_purging_one_keeps_th
                             },
                         )
                         .unwrap();
-                    drop(h);
+                    h.close();
                     prose_doc_ids.push(doc_id);
                 }
             }
@@ -573,7 +573,7 @@ fn two_novel_books_in_one_library_have_disjoint_doc_ids_and_purging_one_keeps_th
                     },
                 )
                 .unwrap();
-            drop(h);
+            h.close();
             prose_doc_ids.push(doc_id);
         }
 
